@@ -123,7 +123,7 @@ def page(slug: str, title: str, content: str, *, plotly: bool = False) -> str:
     </main>
   </div>
   <footer>자료: KCI(한국학술지인용색인) · 동국대학교 dCollection —
-    원본 데이터와 수집·가공 과정은 <a href="{REPO}/blob/main/data/README.md">data/README.md</a> 참조</footer>
+    원본 데이터와 수집·가공 과정은 <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/README.md">data/README.md</a> 참조</footer>
 </body>
 </html>
 """
@@ -158,7 +158,7 @@ def overview_chart() -> str:
   <div id="chart-overview"></div>
   <div class="panel-foot">발행 주기: 연 1회(1989–2003, 2002만 2회) · 연 2회(2004–09) · 연 3회(2010~) ·
     연평균 = 표시 기간 평균(휴간 1990–91·미완 2026 제외) — 자료:
-    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a></div>
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a></div>
 </div>
 
 <script>
@@ -349,8 +349,8 @@ def asymmetry_chart() -> str:
   </div>
   <div id="chart-asym"></div>
   <div class="panel-foot">주저자 기준 · 동명이인 분리 — 자료:
-    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
-    <a href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a></div>
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a></div>
 </div>
 
 <script>
@@ -510,8 +510,8 @@ def top_authors_chart() -> str:
   </div>
   <div id="chart-top"></div>
   <div class="panel-foot">주저자 기준 · 동명이인 분리 — 자료:
-    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
-    <a href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a></div>
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a></div>
 </div>
 
 <script>
@@ -622,8 +622,8 @@ def activity_chart() -> str:
   </div>
   <div id="chart-act"></div>
   <div class="panel-foot">주저자 기준 · 동명이인 분리 · 마지막 구간은 진행 중(잠정) — 자료:
-    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
-    <a href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a></div>
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a></div>
 </div>
 
 <script>
@@ -792,8 +792,8 @@ def stockflow_chart() -> str:
   <div class="panel-foot">주저자 기준 · 동명이인 분리 ·
     <span id="sf-def">유입 = 3편째 게재</span> · 이탈 = 마지막 게재 후 미게재 ·
     마지막 구간은 진행 중(잠정) — 자료:
-    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
-    <a href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a></div>
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a></div>
 </div>
 
 <script>
@@ -996,9 +996,9 @@ def dept_composition_chart() -> str:
   <div id="chart-comp"></div>
   <div class="panel-foot">주저자 기준 · 동명이인 분리 ·
     인철과 학맥 = 동국대 인도철학과 학위자와 그 지도교수 — 자료:
-    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
-    <a href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a> ·
-    <a href="{REPO}/blob/main/data/raw/dongguk_indophil_theses.csv">dongguk_indophil_theses.csv</a></div>
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a> ·
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/raw/dongguk_indophil_theses.csv">dongguk_indophil_theses.csv</a></div>
 </div>
 
 <script>
@@ -1178,9 +1178,9 @@ def dept_share_chart() -> str:
     비중 = 그 구간 핵심 논문 ÷ 그 구간 전체 논문 ·
     <span id="sh-def">핵심 = 그 구간까지 누적 3편 이상</span> ·
     마지막 구간은 진행 중(잠정) — 자료:
-    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
-    <a href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a> ·
-    <a href="{REPO}/blob/main/data/raw/dongguk_indophil_theses.csv">dongguk_indophil_theses.csv</a></div>
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a> ·
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/raw/dongguk_indophil_theses.csv">dongguk_indophil_theses.csv</a></div>
 </div>
 
 <script>
@@ -1332,9 +1332,9 @@ def dept_flow_chart() -> str:
   <div class="panel-foot">주저자 기준 · 동명이인 분리 ·
     <span id="fl-def">유입 = 3편째 게재</span> · 이탈 = 마지막 게재 후 미게재 ·
     마지막 구간은 진행 중(잠정) — 자료:
-    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
-    <a href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a> ·
-    <a href="{REPO}/blob/main/data/raw/dongguk_indophil_theses.csv">dongguk_indophil_theses.csv</a></div>
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a> ·
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/raw/dongguk_indophil_theses.csv">dongguk_indophil_theses.csv</a></div>
 </div>
 
 <script>
@@ -1530,8 +1530,8 @@ def debut_chart() -> str:
   <div class="panel-foot">주저자 기준 · 동명이인 분리 · 데뷔 = 첫 게재 ·
     <span id="db-def">일회성 = 평생 3편 미만</span> ·
     마지막 두 코호트는 관찰 기간이 짧음(잠정) — 자료:
-    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
-    <a href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a></div>
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a></div>
 </div>
 
 <script>
@@ -1668,9 +1668,9 @@ def kci_activity_chart() -> str:
   <div class="panel-foot">
     <span id="ka-def">핵심 = 『인도철학』 누적 3편 도달 시점부터</span> ·
     활동 = 그 구간 KCI 등재(후보)지 게재 · 마지막 구간은 진행 중(잠정) — 자료:
-    <a href="{REPO}/blob/main/data/raw/core_authors_kci_publications.csv">core_authors_kci_publications.csv</a> ·
-    <a href="{REPO}/blob/main/data/raw/non_core_authors_kci_publications.csv">non_core_authors_kci_publications.csv</a> ·
-    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a></div>
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/raw/core_authors_kci_publications.csv">core_authors_kci_publications.csv</a> ·
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/raw/non_core_authors_kci_publications.csv">non_core_authors_kci_publications.csv</a> ·
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a></div>
 </div>
 
 <script>
@@ -1829,9 +1829,9 @@ def devotion_chart() -> str:
   <div id="chart-dv"></div>
   <div class="panel-foot">헌신도 = 그 구간 자기 KCI 논문 중 『인도철학』 비율(게재 핵심만 평균) ·
     N = 게재 핵심 수 · 마지막 구간은 진행 중(잠정) — 자료:
-    <a href="{REPO}/blob/main/data/raw/core_authors_kci_publications.csv">core_authors_kci_publications.csv</a> ·
-    <a href="{REPO}/blob/main/data/raw/non_core_authors_kci_publications.csv">non_core_authors_kci_publications.csv</a> ·
-    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a></div>
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/raw/core_authors_kci_publications.csv">core_authors_kci_publications.csv</a> ·
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/raw/non_core_authors_kci_publications.csv">non_core_authors_kci_publications.csv</a> ·
+    <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a></div>
 </div>
 
 <script>
