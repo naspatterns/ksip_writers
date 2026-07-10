@@ -112,7 +112,7 @@
     const labels = [];
     for (let i = 0; i < nbin; i++) {
       const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
-      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+      labels.push(b0 + "–" + String(b1 % 100).padStart(2, "0"));
     }
     const c1 = Array(nbin).fill(0), cm = Array(nbin).fill(0), cn = Array(nbin).fill(0);
     AY.forEach(years => {
@@ -245,7 +245,7 @@
     const labels = [];
     for (let i = 0; i < nbin; i++) {
       const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
-      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+      labels.push(b0 + "–" + String(b1 % 100).padStart(2, "0"));
     }
     const act = Array(nbin).fill(0), indo = Array(nbin).fill(0);
     KC.forEach(p => {
@@ -401,7 +401,7 @@
     const labels = [];
     for (let i = 0; i < nbin; i++) {
       const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
-      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+      labels.push(b0 + "–" + String(b1 % 100).padStart(2, "0"));
     }
     const sums = Array(nbin).fill(0), ncon = Array(nbin).fill(0);
     KC.forEach(p => {

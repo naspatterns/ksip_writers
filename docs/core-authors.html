@@ -332,7 +332,7 @@
     const labels = [];
     for (let i = 0; i < nbin; i++) {
       const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
-      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+      labels.push(b0 + "–" + String(b1 % 100).padStart(2, "0"));
     }
     const core = Array(nbin).fill(0), total = Array(nbin).fill(0);
     const shN = Array(nbin).fill(0), shD = Array(nbin).fill(0);
@@ -496,7 +496,7 @@
     const labels = [];
     for (let i = 0; i < nbin; i++) {
       const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
-      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+      labels.push(b0 + "–" + String(b1 % 100).padStart(2, "0"));
     }
     const core = Array(nbin).fill(0), total = Array(nbin).fill(0);
     const ent = Array(nbin).fill(0), exi = Array(nbin).fill(0);

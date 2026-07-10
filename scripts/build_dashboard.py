@@ -641,7 +641,7 @@ def activity_chart() -> str:
     const labels = [];
     for (let i = 0; i < nbin; i++) {{
       const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
-      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+      labels.push(b0 + "–" + String(b1 % 100).padStart(2, "0"));
     }}
     const core = Array(nbin).fill(0), total = Array(nbin).fill(0);
     const shN = Array(nbin).fill(0), shD = Array(nbin).fill(0);
@@ -811,7 +811,7 @@ def stockflow_chart() -> str:
     const labels = [];
     for (let i = 0; i < nbin; i++) {{
       const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
-      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+      labels.push(b0 + "–" + String(b1 % 100).padStart(2, "0"));
     }}
     const core = Array(nbin).fill(0), total = Array(nbin).fill(0);
     const ent = Array(nbin).fill(0), exi = Array(nbin).fill(0);
@@ -1198,7 +1198,7 @@ def dept_share_chart() -> str:
     const labels = [];
     for (let i = 0; i < nbin; i++) {{
       const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
-      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+      labels.push(b0 + "–" + String(b1 % 100).padStart(2, "0"));
     }}
     const tot = Array(nbin).fill(0), gp = Array(nbin).fill(0), rp = Array(nbin).fill(0);
     let nG = 0, nR = 0;
@@ -1352,7 +1352,7 @@ def dept_flow_chart() -> str:
     const labels = [];
     for (let i = 0; i < nbin; i++) {{
       const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
-      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+      labels.push(b0 + "–" + String(b1 % 100).padStart(2, "0"));
     }}
     const z = () => Array(nbin).fill(0);
     const entG = z(), entR = z(), exiG = z(), exiR = z();
@@ -1549,7 +1549,7 @@ def debut_chart() -> str:
     const labels = [];
     for (let i = 0; i < nbin; i++) {{
       const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
-      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+      labels.push(b0 + "–" + String(b1 % 100).padStart(2, "0"));
     }}
     const c1 = Array(nbin).fill(0), cm = Array(nbin).fill(0), cn = Array(nbin).fill(0);
     AY.forEach(years => {{
@@ -1687,7 +1687,7 @@ def kci_activity_chart() -> str:
     const labels = [];
     for (let i = 0; i < nbin; i++) {{
       const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
-      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+      labels.push(b0 + "–" + String(b1 % 100).padStart(2, "0"));
     }}
     const act = Array(nbin).fill(0), indo = Array(nbin).fill(0);
     KC.forEach(p => {{
@@ -1848,7 +1848,7 @@ def devotion_chart() -> str:
     const labels = [];
     for (let i = 0; i < nbin; i++) {{
       const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
-      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+      labels.push(b0 + "–" + String(b1 % 100).padStart(2, "0"));
     }}
     const sums = Array(nbin).fill(0), ncon = Array(nbin).fill(0);
     KC.forEach(p => {{
