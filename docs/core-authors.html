@@ -214,6 +214,87 @@
   render();
 })();
 </script>
+
+<div class="panel">
+  <h2>누적 게재 상위 필자</h2>
+  <div class="panel-bar">
+    <div class="ctl"><span class="ctl-label">인원</span>
+      <span class="seg" id="seg-top-n">
+        <button data-v="10">10명</button><button data-v="20" class="on">20명</button><button data-v="30">30명</button>
+      </span></div>
+    <div class="dl">
+      <button id="dl-top-png">PNG 저장</button><button id="dl-top-svg">SVG 저장</button>
+    </div>
+  </div>
+  <div id="chart-top"></div>
+  <div class="panel-foot">주저자 기준 · 동명이인 분리 — 자료:
+    <a href="https://github.com/naspatterns/ksip_writers/blob/main/data/processed/papers.csv">papers.csv</a> ·
+    <a href="https://github.com/naspatterns/ksip_writers/blob/main/data/processed/authors.csv">authors.csv</a></div>
+</div>
+
+<script>
+(function () {
+  const TOP = [{"name": "정승석", "n": 31}, {"name": "이지수", "n": 20}, {"name": "이태승", "n": 19}, {"name": "김호성", "n": 19}, {"name": "박효엽", "n": 17}, {"name": "안성두", "n": 16}, {"name": "황순일", "n": 13}, {"name": "김선근", "n": 12}, {"name": "김진영", "n": 12}, {"name": "박기열", "n": 11}, {"name": "김미숙(자이나)", "n": 10}, {"name": "김재민", "n": 9}, {"name": "류현정", "n": 9}, {"name": "이거룡", "n": 9}, {"name": "김재권", "n": 9}, {"name": "성청환", "n": 9}, {"name": "양영순", "n": 8}, {"name": "주명철", "n": 7}, {"name": "강형철", "n": 7}, {"name": "심준보", "n": 7}, {"name": "김성철(유식)", "n": 7}, {"name": "최지연", "n": 7}, {"name": "김서리", "n": 7}, {"name": "박문성", "n": 7}, {"name": "이법산", "n": 7}, {"name": "심재관", "n": 7}, {"name": "이영진", "n": 6}, {"name": "박영길", "n": 6}, {"name": "이호근", "n": 6}, {"name": "함형석", "n": 6}];
+  const INK = "#1C1B19", MUTED = "#6E675C", GOLD = "#B8911F", GRID = "#E4E2DA";
+  const gd = document.getElementById("chart-top");
+  let N = 20;
+
+  function chartHeight() { return 30 + N * 26 + 20; }
+
+  function render() {
+    const rows = TOP.slice(0, N);
+    const traces = [{
+      type: "bar", orientation: "h",
+      y: rows.map(r => r.name), x: rows.map(r => r.n),
+      marker: { color: GOLD, line: { width: 0 } },
+      width: 0.62,
+      text: rows.map(r => String(r.n)),
+      textposition: "outside", textangle: 0,
+      textfont: { color: MUTED, size: 12 },
+      cliponaxis: false,
+      hovertemplate: "%{y} · %{x}편<extra></extra>",
+      name: "",
+    }];
+    const layout = {
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: { family: "'Noto Sans KR', sans-serif", color: INK, size: 14 },
+      margin: { l: 110, r: 34, t: 8, b: 8 }, height: chartHeight(),
+      showlegend: false,
+      xaxis: { visible: false, fixedrange: true,
+              range: [0, Math.max(...rows.map(r => r.n)) * 1.08] },
+      yaxis: { autorange: "reversed", tickfont: { color: INK, size: 13 },
+              fixedrange: true },
+      hoverlabel: { bgcolor: "#FFFFFF", bordercolor: GRID, font: { color: INK } },
+    };
+    Plotly.react(gd, traces, layout, { displayModeBar: false, responsive: true });
+  }
+
+  document.getElementById("seg-top-n").addEventListener("click", e => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    document.querySelectorAll("#seg-top-n button").forEach(b => b.classList.toggle("on", b === btn));
+    N = parseInt(btn.dataset.v, 10);
+    render();
+  });
+
+  async function capture(fmt) {
+    await Plotly.relayout(gd, { paper_bgcolor: "#FFFFFF", plot_bgcolor: "#FFFFFF" });
+    try {
+      await Plotly.downloadImage(gd, {
+        format: fmt, width: 720, height: chartHeight(),
+        scale: fmt === "png" ? 4 : 1,
+        filename: "인도철학_누적게재_상위" + N + "인",
+      });
+    } finally {
+      await Plotly.relayout(gd, { paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" });
+    }
+  }
+  document.getElementById("dl-top-png").addEventListener("click", () => capture("png"));
+  document.getElementById("dl-top-svg").addEventListener("click", () => capture("svg"));
+
+  render();
+})();
+</script>
 <div class="panel"><div class="pending">그래프 준비 중</div></div>
     </main>
   </div>

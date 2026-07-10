@@ -428,6 +428,107 @@ def asymmetry_chart() -> str:
 """
 
 
+def top_authors_chart() -> str:
+    """핵심 필진 ②: 누적 게재 상위 필자 가로 막대. 변수 = 상위 N명(10/20/30)."""
+    papers = pd.read_parquet(ROOT / "data" / "processed" / "papers.parquet")
+    authors = pd.read_parquet(ROOT / "data" / "processed" / "authors.parquet")
+    papers["주저자"] = papers["논문 ID"].map(
+        authors.sort_index().groupby("논문ID")["저자_원본"].first())
+    ks = papers["주저자"] == "김성철"
+    papers.loc[ks, "주저자"] = ["김성철#유식" if "금강" in str(a) else "김성철#중관"
+                                for a in papers.loc[ks, "주저자 소속기관"].fillna("")]
+    papers.loc[papers["주저자"] == "김미숙", "주저자"] = "김미숙#자이나"
+    life = papers.groupby("주저자").size().sort_values(ascending=False)
+    top = [{"name": nm.replace("#", "("), "n": int(c)} for nm, c in life.head(30).items()]
+    top = [{"name": t["name"] + ")" if "(" in t["name"] else t["name"], "n": t["n"]}
+           for t in top]
+    assert top[0] == {"name": "정승석", "n": 31}, top[0]
+
+    top_js = json.dumps(top, ensure_ascii=False)
+    return f"""
+<div class="panel">
+  <h2>누적 게재 상위 필자</h2>
+  <div class="panel-bar">
+    <div class="ctl"><span class="ctl-label">인원</span>
+      <span class="seg" id="seg-top-n">
+        <button data-v="10">10명</button><button data-v="20" class="on">20명</button><button data-v="30">30명</button>
+      </span></div>
+    <div class="dl">
+      <button id="dl-top-png">PNG 저장</button><button id="dl-top-svg">SVG 저장</button>
+    </div>
+  </div>
+  <div id="chart-top"></div>
+  <div class="panel-foot">주저자 기준 · 동명이인 분리 — 자료:
+    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
+    <a href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a></div>
+</div>
+
+<script>
+(function () {{
+  const TOP = {top_js};
+  const INK = "{INK}", MUTED = "{MUTED}", GOLD = "{GOLD}", GRID = "{GRID}";
+  const gd = document.getElementById("chart-top");
+  let N = 20;
+
+  function chartHeight() {{ return 30 + N * 26 + 20; }}
+
+  function render() {{
+    const rows = TOP.slice(0, N);
+    const traces = [{{
+      type: "bar", orientation: "h",
+      y: rows.map(r => r.name), x: rows.map(r => r.n),
+      marker: {{ color: GOLD, line: {{ width: 0 }} }},
+      width: 0.62,
+      text: rows.map(r => String(r.n)),
+      textposition: "outside", textangle: 0,
+      textfont: {{ color: MUTED, size: 12 }},
+      cliponaxis: false,
+      hovertemplate: "%{{y}} · %{{x}}편<extra></extra>",
+      name: "",
+    }}];
+    const layout = {{
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
+      margin: {{ l: 110, r: 34, t: 8, b: 8 }}, height: chartHeight(),
+      showlegend: false,
+      xaxis: {{ visible: false, fixedrange: true,
+              range: [0, Math.max(...rows.map(r => r.n)) * 1.08] }},
+      yaxis: {{ autorange: "reversed", tickfont: {{ color: INK, size: 13 }},
+              fixedrange: true }},
+      hoverlabel: {{ bgcolor: "#FFFFFF", bordercolor: GRID, font: {{ color: INK }} }},
+    }};
+    Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
+  }}
+
+  document.getElementById("seg-top-n").addEventListener("click", e => {{
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    document.querySelectorAll("#seg-top-n button").forEach(b => b.classList.toggle("on", b === btn));
+    N = parseInt(btn.dataset.v, 10);
+    render();
+  }});
+
+  async function capture(fmt) {{
+    await Plotly.relayout(gd, {{ paper_bgcolor: "#FFFFFF", plot_bgcolor: "#FFFFFF" }});
+    try {{
+      await Plotly.downloadImage(gd, {{
+        format: fmt, width: 720, height: chartHeight(),
+        scale: fmt === "png" ? 4 : 1,
+        filename: "인도철학_누적게재_상위" + N + "인",
+      }});
+    }} finally {{
+      await Plotly.relayout(gd, {{ paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" }});
+    }}
+  }}
+  document.getElementById("dl-top-png").addEventListener("click", () => capture("png"));
+  document.getElementById("dl-top-svg").addEventListener("click", () => capture("svg"));
+
+  render();
+}})();
+</script>
+"""
+
+
 PENDING = '<div class="panel"><div class="pending">그래프 준비 중</div></div>'
 
 
@@ -435,7 +536,7 @@ def main() -> None:
     DOCS.mkdir(exist_ok=True)
     contents = {
         "index.html": (overview_chart(), True),
-        "core-authors.html": (asymmetry_chart() + PENDING, True),
+        "core-authors.html": (asymmetry_chart() + top_authors_chart() + PENDING, True),
         "department.html": (PENDING, False),
         "commitment.html": (PENDING, False),
     }
