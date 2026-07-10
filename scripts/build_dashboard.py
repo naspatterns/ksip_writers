@@ -130,7 +130,8 @@ def page(slug: str, title: str, content: str, *, plotly: bool = False) -> str:
 
 
 def overview_chart() -> str:
-    """개관: 연도별 논문 발행수. 변수 = 구간 폭(4년/5년/없음), 기간(전체/2000~/최근 10년)."""
+    """개관: 연도별 논문 발행수. 변수 = 구간 폭(4년/5년/없음), 기간(전체/2000~/최근 10년).
+    휴간(1990–91) 음영, 기간별 연평균선(휴간·미완 2026 제외 평균), 구간/연도 눈금."""
     papers = pd.read_parquet(ROOT / "data" / "processed" / "papers.parquet")
     counts = papers["발행연도"].dropna().astype(int).value_counts()
     years = list(range(1989, 2027))
@@ -155,7 +156,7 @@ def overview_chart() -> str:
     </div>
   </div>
   <div id="chart-overview"></div>
-  <div class="panel-foot">자료:
+  <div class="panel-foot">연평균 = 표시 기간 평균(휴간 1990–91·미완 2026 제외) — 자료:
     <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a></div>
 </div>
 
@@ -163,6 +164,7 @@ def overview_chart() -> str:
 (function () {{
   const D = {data_js};
   const INK = "{INK}", MUTED = "{MUTED}", GRID = "{GRID}", BARBG = "{BARBG}";
+  const HIATUS = [1990, 1991];
   const gd = document.getElementById("chart-overview");
   let binw = 4, range = "all";
 
@@ -186,8 +188,10 @@ def overview_chart() -> str:
   function render() {{
     const traces = [];
     const xr = xrange();
+    const y0 = Math.ceil(xr[0]), y1 = Math.floor(xr[1]);
+    const B = binw > 0 ? bins(binw) : [];
+
     if (binw > 0) {{
-      const B = bins(binw);
       traces.push({{
         type: "bar",
         x: B.map(b => (b.b0 + b.b1) / 2),
@@ -213,23 +217,67 @@ def overview_chart() -> str:
       hovertemplate: "%{{x}}년 · %{{y}}편<extra></extra>",
       name: "연도별 발행 편수",
     }});
+
+    // ── 기간 연평균 (휴간·미완 2026 제외) ──
+    let sum = 0, cnt = 0;
+    for (let y = Math.max(1989, y0); y <= Math.min(2026, y1); y++) {{
+      if (HIATUS.includes(y) || y === 2026) continue;
+      sum += D.n[y - 1989]; cnt++;
+    }}
+    const avg = cnt ? sum / cnt : 0;
+
+    // ── x축 눈금: 구간 선택 시 구간 연도, 없음 시 매년 ──
+    let tickvals, ticktext, tickangle = 0;
+    if (binw > 0) {{
+      tickvals = B.map(b => (b.b0 + b.b1) / 2);
+      ticktext = B.map(b => String(b.b0 % 100).padStart(2, "0") + "–"
+                          + String(b.b1 % 100).padStart(2, "0"));
+    }} else {{
+      tickvals = D.years.filter(y => y >= y0 && y <= y1);
+      ticktext = tickvals.map(String);
+      if (tickvals.length > 16) tickangle = -90;
+    }}
+
+    const shapes = [
+      // 휴간 밴드
+      {{ type: "rect", x0: 1989.5, x1: 1991.5, y0: 0, y1: 1,
+        xref: "x", yref: "paper", fillcolor: "rgba(205,199,184,0.3)",
+        line: {{ width: 0 }}, layer: "below" }},
+      // 기간 연평균선 (점선)
+      {{ type: "line", x0: xr[0], x1: xr[1], y0: avg, y1: avg,
+        xref: "x", yref: "y", layer: "below",
+        line: {{ color: INK, width: 1, dash: "dot" }}, opacity: 0.55 }},
+    ];
+    const annos = [
+      {{ x: xr[1] - 0.3, y: avg, xref: "x", yref: "y",
+        xanchor: "right", yshift: 10, showarrow: false,
+        text: (range === "all" ? "전체 " : "") + "연평균 " + Math.round(avg) + "편",
+        bgcolor: "rgba(255,255,255,0.8)", borderpad: 1,
+        font: {{ color: INK, size: 11.5 }} }},
+    ];
+    if (xr[0] < 1991.5) {{
+      annos.push({{ x: 1990.5, y: 0.5, xref: "x", yref: "y",
+        yanchor: "bottom", showarrow: false, text: "휴간<br>1990–91",
+        font: {{ color: MUTED, size: 10.5 }} }});
+    }}
+
     const layout = {{
       paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
       font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
-      margin: {{ l: 40, r: 16, t: 8, b: 36 }}, height: 420,
+      margin: {{ l: 40, r: 16, t: 8, b: binw > 0 ? 36 : 52 }}, height: 420,
       hovermode: "x unified",
       hoverlabel: {{ bgcolor: "#FFFFFF", bordercolor: GRID, font: {{ color: INK }} }},
       showlegend: binw > 0,
       legend: {{ orientation: "h", yanchor: "bottom", y: 1.02, x: 0,
                font: {{ size: 13, color: MUTED }} }},
       bargap: 0,
-      xaxis: {{ showgrid: false, zeroline: false, dtick: 5, range: xr,
-              tickfont: {{ color: MUTED }} }},
-      yaxis: {{ gridcolor: GRID, zeroline: false, rangemode: "tozero",
-              tickfont: {{ color: MUTED }} }},
-      annotations: [{{ x: 1990.2, y: 16.5, text: "휴간 1990–91", showarrow: false,
-                     xanchor: "left", yanchor: "bottom",
-                     font: {{ color: MUTED, size: 12 }} }}],
+      xaxis: {{ showgrid: false, zeroline: false, range: xr,
+              tickvals: tickvals, ticktext: ticktext, tickangle: tickangle,
+              tickfont: {{ color: MUTED, size: binw > 0 ? 12 : 11 }} }},
+      yaxis: {{ gridcolor: GRID, zeroline: false, tickfont: {{ color: MUTED }},
+              rangemode: "tozero" }},
+      shapes: shapes,
+      annotations: annos,
     }};
     Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
   }}
