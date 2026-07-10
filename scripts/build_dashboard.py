@@ -886,6 +886,202 @@ def stockflow_chart() -> str:
 """
 
 
+def _author_years_sadan() -> list[dict]:
+    """주저자별 발행연도 + 인철과 학맥 여부(동국대 학위자·그 지도교수) — 인도철학과 탭 공용."""
+    import csv
+    from collections import defaultdict
+
+    papers = pd.read_parquet(ROOT / "data" / "processed" / "papers.parquet")
+    authors = pd.read_parquet(ROOT / "data" / "processed" / "authors.parquet")
+    papers["주저자"] = papers["논문 ID"].map(
+        authors.sort_index().groupby("논문ID")["저자_원본"].first())
+    ks = papers["주저자"] == "김성철"
+    papers.loc[ks, "주저자"] = ["김성철#유식" if "금강" in str(a) else "김성철#중관"
+                                for a in papers.loc[ks, "주저자 소속기관"].fillna("")]
+    papers.loc[papers["주저자"] == "김미숙", "주저자"] = "김미숙#자이나"
+    jp = papers[papers["발행연도"].notna() & papers["주저자"].notna()]
+
+    rows = list(csv.DictReader(
+        open(ROOT / "data" / "raw" / "dongguk_indophil_theses.csv", encoding="utf-8-sig")))
+    advisors = {r["advisor"].strip() for r in rows} - {"미상", ""}
+    per = defaultdict(list)
+    for r in rows:
+        per[r["person_id"].strip()].append((r["degree"].strip(), r["advisor"].strip()))
+
+    def sadan(pid: str) -> bool:  # 박사(최종학위) 지도교수 우선 · 지도교수 본인 포함
+        if pid in advisors:
+            return True
+        recs = per.get(pid, [])
+        phd = [a for d, a in recs if d == "박사" and a and a != "미상"]
+        ma = [a for d, a in recs if d == "석사" and a and a != "미상"]
+        return bool(phd or ma)
+
+    data = [{"y": sorted(int(v) for v in ys), "s": int(sadan(nm))}
+            for nm, ys in jp.groupby("주저자")["발행연도"]]
+    n_auth_s = sum(d["s"] for d in data)
+    n_pap_s = sum(len(d["y"]) for d in data if d["s"])
+    assert (len(data), n_auth_s, n_pap_s) == (207, 79, 390)
+    return data
+
+
+def dept_data_script() -> str:
+    return f"<script>const KSIP_AS = {json.dumps(_author_years_sadan())};</script>"
+
+
+def dept_composition_chart() -> str:
+    """인도철학과 ①: 필진과 논문의 출신 구성 (3막대). 변수 = 핵심 기준(2/3/4/5편)."""
+    return f"""
+<div class="panel">
+  <h2>필진과 논문의 출신 구성</h2>
+  <div class="panel-bar">
+    <div class="ctl"><span class="ctl-label">핵심 기준</span>
+      <span class="seg" id="seg-comp-n">
+        <button data-v="2">2편</button><button data-v="3" class="on">3편</button><button data-v="4">4편</button><button data-v="5">5편</button>
+      </span></div>
+    <div class="dl">
+      <button id="dl-comp-png">PNG 저장</button><button id="dl-comp-svg">SVG 저장</button>
+    </div>
+  </div>
+  <div id="chart-comp"></div>
+  <div class="panel-foot">주저자 기준 · 동명이인 분리 ·
+    인철과 학맥 = 동국대 인도철학과 학위자와 그 지도교수 — 자료:
+    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
+    <a href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a> ·
+    <a href="{REPO}/blob/main/data/raw/dongguk_indophil_theses.csv">dongguk_indophil_theses.csv</a></div>
+</div>
+
+<script>
+(function () {{
+  const AS = KSIP_AS;
+  const INK = "{INK}", MUTED = "{MUTED}", GRID = "{GRID}";
+  const GOLD = "{GOLD}", GOLD_P = "#DBC88F", GREY_D = "#A8A294", GREY = "#D8D5CC";
+  const gd = document.getElementById("chart-comp");
+  const TOT_A = AS.length;                                    // 207
+  const TOT_W = AS.reduce((a, d) => a + d.y.length, 0);       // 641
+  const A_S = AS.filter(d => d.s).length;                     // 79
+  const W_S = AS.filter(d => d.s).reduce((a, d) => a + d.y.length, 0);  // 390
+  let N = 3;
+
+  const YS = [2.15, 1.0, -0.15], H = 0.54;
+
+  function render() {{
+    const core = AS.filter(d => d.y.length >= N);
+    const nCore = core.length, nCoreS = core.filter(d => d.s).length;
+    const gCore = core.filter(d => d.s).reduce((a, d) => a + d.y.length, 0);
+    const oCore = core.filter(d => !d.s).reduce((a, d) => a + d.y.length, 0);
+    const gOnce = W_S - gCore, oOnce = (TOT_W - W_S) - oCore;
+    const pAuth = 100 * A_S / TOT_A, pPap = 100 * W_S / TOT_W, pCore = 100 * nCoreS / nCore;
+
+    const traces = [], annos = [];
+    function seg(y, x0, w, color, name, show) {{
+      traces.push({{ type: "bar", orientation: "h", y: [y], x: [w], base: [x0],
+        width: H, name: name || "", showlegend: !!show,
+        marker: {{ color: color, line: {{ color: "#FFFFFF", width: 1.4 }} }},
+        hovertemplate: name ? name + "<extra></extra>" : "<extra></extra>", hoverinfo: name ? undefined : "skip" }});
+    }}
+    function inLabel(y, cx, text, white, size) {{
+      annos.push({{ x: cx, y: y, yref: "y", text: text, showarrow: false,
+        font: {{ color: white ? "#FFFFFF" : INK, size: size || 13 }} }});
+    }}
+
+    // ── 막대 1: 전체 필진 ──
+    seg(YS[0], 0, pAuth, GOLD, "인철과 학맥 출신", true);
+    seg(YS[0], pAuth, 100 - pAuth, GREY, "그 외", true);
+    inLabel(YS[0], pAuth / 2, "<b>" + Math.round(pAuth) + "% · " + A_S + "명</b>", true);
+    inLabel(YS[0], pAuth + (100 - pAuth) / 2, Math.round(100 - pAuth) + "% · " + (TOT_A - A_S) + "명", false);
+
+    // ── 막대 2: 발표 논문 (짙은 칸 = 핵심 필진의 몫) ──
+    let left = 0;
+    [[gCore, GOLD, "핵심 몫 " + gCore + "편", true],
+     [gOnce, GOLD_P, "일회성 " + gOnce + "편", false],
+     [oCore, GREY_D, "핵심 몫 " + oCore + "편", true],
+     [oOnce, GREY, "일회성 " + oOnce + "편", false]].forEach(([cnt, col, lab, white], i) => {{
+      const w = 100 * cnt / TOT_W;
+      seg(YS[1], left, w, col, lab);
+      if (w >= 9) {{
+        inLabel(YS[1], left + w / 2, white ? "<b>" + lab + "</b>" : lab, white, 12);
+      }} else if (cnt > 0) {{                       // 좁은 칸 → 바깥 리더
+        annos.push({{ x: left + w / 2, y: YS[1] + (i < 2 ? 0.27 : -0.27), yref: "y",
+          ax: 0, ay: i < 2 ? -20 : 20,
+          text: lab, showarrow: true, arrowhead: 0, arrowwidth: 0.8, arrowcolor: MUTED,
+          font: {{ color: MUTED, size: 11 }} }});
+      }}
+      left += w;
+    }});
+
+    // 막대 2 아래 브래킷: 학맥 합 / 그 외 합 (핵심 기준과 무관)
+    const by = YS[1] - H / 2 - 0.14;
+    const shapes = [];
+    [[0, pPap, "인철과 학맥 " + Math.round(pPap) + "% · " + W_S + "편"],
+     [pPap, 100, "그 외 " + Math.round(100 - pPap) + "% · " + (TOT_W - W_S) + "편"]].forEach(([x0, x1, lab]) => {{
+      shapes.push({{ type: "path", layer: "above",
+        path: "M " + (x0 + 0.4) + "," + (by + 0.09) + " L " + (x0 + 0.4) + "," + by
+            + " L " + (x1 - 0.4) + "," + by + " L " + (x1 - 0.4) + "," + (by + 0.09),
+        line: {{ color: MUTED, width: 0.9 }} }});
+      annos.push({{ x: (x0 + x1) / 2, y: by - 0.10, yref: "y", text: lab, showarrow: false,
+        yanchor: "top", font: {{ color: INK, size: 11.5 }} }});
+    }});
+
+    // ── 막대 3: 핵심 필진 ──
+    seg(YS[2], 0, pCore, GOLD);
+    seg(YS[2], pCore, 100 - pCore, GREY);
+    inLabel(YS[2], pCore / 2, "<b>" + Math.round(pCore) + "% · " + nCoreS + "명</b>", true);
+    inLabel(YS[2], pCore + (100 - pCore) / 2, Math.round(100 - pCore) + "% · " + (nCore - nCoreS) + "명", false);
+
+    // 리본: 전체 필진 학맥 → 논문 학맥 (핵심 기준과 무관)
+    shapes.push({{ type: "path", layer: "below",
+      path: "M 0," + (YS[0] - H / 2) + " L " + pAuth + "," + (YS[0] - H / 2)
+          + " L " + pPap + "," + (YS[1] + H / 2) + " L 0," + (YS[1] + H / 2) + " Z",
+      fillcolor: "rgba(184,145,31,0.13)", line: {{ width: 0 }} }});
+
+    const layout = {{
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
+      margin: {{ l: 96, r: 16, t: 34, b: 8 }}, height: 360,
+      showlegend: true, barmode: "overlay",
+      legend: {{ orientation: "h", yanchor: "bottom", y: 1.05, x: 0, traceorder: "normal",
+               font: {{ size: 13, color: MUTED }} }},
+      xaxis: {{ range: [0, 100.5], visible: false, fixedrange: true }},
+      yaxis: {{ range: [-0.85, 2.95], tickvals: YS,
+              ticktext: ["전체 필진<br>" + TOT_A + "명", "발표 논문<br>" + TOT_W + "편",
+                         "핵심 필진<br>" + nCore + "명"],
+              tickfont: {{ color: INK, size: 13 }}, fixedrange: true }},
+      shapes: shapes,
+      annotations: annos,
+      hoverlabel: {{ bgcolor: "#FFFFFF", bordercolor: GRID, font: {{ color: INK }} }},
+    }};
+    Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
+  }}
+
+  document.getElementById("seg-comp-n").addEventListener("click", e => {{
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    document.querySelectorAll("#seg-comp-n button").forEach(b => b.classList.toggle("on", b === btn));
+    N = parseInt(btn.dataset.v, 10);
+    render();
+  }});
+
+  async function capture(fmt) {{
+    await Plotly.relayout(gd, {{ paper_bgcolor: "#FFFFFF", plot_bgcolor: "#FFFFFF" }});
+    try {{
+      await Plotly.downloadImage(gd, {{
+        format: fmt, width: 960, height: 360,
+        scale: fmt === "png" ? 4 : 1,
+        filename: "인도철학_필진_논문_출신구성",
+      }});
+    }} finally {{
+      await Plotly.relayout(gd, {{ paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" }});
+    }}
+  }}
+  document.getElementById("dl-comp-png").addEventListener("click", () => capture("png"));
+  document.getElementById("dl-comp-svg").addEventListener("click", () => capture("svg"));
+
+  render();
+}})();
+</script>
+"""
+
+
 PENDING = '<div class="panel"><div class="pending">그래프 준비 중</div></div>'
 
 
@@ -895,7 +1091,7 @@ def main() -> None:
         "index.html": (overview_chart(), True),
         "core-authors.html": (ay_script() + asymmetry_chart() + top_authors_chart()
                               + activity_chart() + stockflow_chart(), True),
-        "department.html": (PENDING, False),
+        "department.html": (dept_data_script() + dept_composition_chart() + PENDING, True),
         "commitment.html": (PENDING, False),
     }
     for slug, title in PAGES:
