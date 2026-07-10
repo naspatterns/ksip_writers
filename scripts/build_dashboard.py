@@ -1411,6 +1411,497 @@ def dept_flow_chart() -> str:
 """
 
 
+def _core_kci() -> list[dict]:
+    """핵심 필진(평생 3편 이상, 70명)별 인도철학 주저자 연도(j) + KCI 전체 출판(k: [연도, 인도철학 여부]).
+    헌신성 06·09의 입력. 핵심 기준 변수는 3~5편만 지원(KCI 수집 로스터가 3편 기준이라 2편은 데이터 없음)."""
+    papers = pd.read_parquet(ROOT / "data" / "processed" / "papers.parquet")
+    authors = pd.read_parquet(ROOT / "data" / "processed" / "authors.parquet")
+    papers["주저자"] = papers["논문 ID"].map(
+        authors.sort_index().groupby("논문ID")["저자_원본"].first())
+    ks = papers["주저자"] == "김성철"
+    papers.loc[ks, "주저자"] = ["김성철#유식" if "금강" in str(a) else "김성철#중관"
+                                for a in papers.loc[ks, "주저자 소속기관"].fillna("")]
+    papers.loc[papers["주저자"] == "김미숙", "주저자"] = "김미숙#자이나"
+    jp = papers[papers["발행연도"].notna() & papers["주저자"].notna()].copy()
+    jp["발행연도"] = jp["발행연도"].astype(int)
+    life = jp.groupby("주저자").size()
+    core = set(life[life >= 3].index)
+
+    def load(pub, summ):
+        s = pd.read_csv(ROOT / "data" / "raw" / summ, dtype=str, keep_default_na=False)
+        stem2pid = {p.replace("#", "_"): p for p in s["person_id"]}
+        d = pd.read_csv(ROOT / "data" / "raw" / pub, dtype=str, keep_default_na=False)
+        d["person_id"] = d["author"].map(stem2pid)
+        return d[d["person_id"].notna()]
+
+    K = pd.concat([load("core_authors_kci_publications.csv", "core_authors_summary.csv"),
+                   load("non_core_authors_kci_publications.csv", "non_core_authors_summary.csv")],
+                  ignore_index=True)
+    K = K[K["person_id"].isin(core)].drop_duplicates(["person_id", "artiId"])
+    assert not core - set(K["person_id"])
+
+    jy = jp.groupby("주저자")["발행연도"].apply(lambda s: sorted(int(v) for v in s))
+    emb = []
+    for pid in sorted(core):
+        kk = K[K["person_id"] == pid]
+        ky = sorted((int(y), int(j == "인도철학"))
+                    for y, j in zip(pd.to_numeric(kk["pub_year"], errors="coerce"), kk["journal"])
+                    if pd.notna(y))
+        emb.append({"j": jy[pid], "k": [list(t) for t in ky]})
+    assert len(emb) == 70
+    return emb
+
+
+def commit_data_script() -> str:
+    return (f"<script>const KSIP_AY = {json.dumps(_author_years())};"
+            f"const KSIP_KCI = {json.dumps(_core_kci())};</script>")
+
+
+def debut_chart() -> str:
+    """헌신성 ①: 데뷔 시기별 일회성 필자 비율. 변수 = 구간 폭(4/5년), 핵심 기준(2~5편)."""
+    return f"""
+<div class="panel">
+  <h2>데뷔 시기별 일회성 필자 비율</h2>
+  <div class="panel-bar">
+    <div class="ctl"><span class="ctl-label">구간</span>
+      <span class="seg" id="seg-db-w">
+        <button data-v="4" class="on">4년</button><button data-v="5">5년</button>
+      </span></div>
+    <div class="ctl"><span class="ctl-label">핵심 기준</span>
+      <span class="seg" id="seg-db-n">
+        <button data-v="2">2편</button><button data-v="3" class="on">3편</button><button data-v="4">4편</button><button data-v="5">5편</button>
+      </span></div>
+    <div class="dl">
+      <button id="dl-db-png">PNG 저장</button><button id="dl-db-svg">SVG 저장</button>
+    </div>
+  </div>
+  <div id="chart-db"></div>
+  <div class="panel-foot">주저자 기준 · 동명이인 분리 · 데뷔 = 첫 게재 ·
+    <span id="db-def">일회성 = 평생 3편 미만</span> ·
+    마지막 두 코호트는 관찰 기간이 짧음(잠정) — 자료:
+    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
+    <a href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a></div>
+</div>
+
+<script>
+(function () {{
+  const AY = KSIP_AY;
+  const INK = "{INK}", MUTED = "{MUTED}", GRID = "{GRID}";
+  const MID = "#A8A294", LITE = "#D8D5CC";
+  const Y0 = 1989, Y1 = 2026;
+  const gd = document.getElementById("chart-db");
+  let W = 4, N = 3;
+
+  function compute() {{
+    const nbin = Math.floor((Y1 - Y0) / W) + 1;
+    const bin = y => Math.min(Math.floor((y - Y0) / W), nbin - 1);
+    const labels = [];
+    for (let i = 0; i < nbin; i++) {{
+      const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
+      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+    }}
+    const c1 = Array(nbin).fill(0), cm = Array(nbin).fill(0), cn = Array(nbin).fill(0);
+    AY.forEach(years => {{
+      const bd = bin(years[0]);
+      cn[bd]++;
+      if (years.length === 1) c1[bd]++;
+      else if (years.length < N) cm[bd]++;
+    }});
+    const one = c1.map((v, i) => cn[i] ? Math.round(100 * v / cn[i]) : 0);
+    const tot = c1.map((v, i) => cn[i] ? Math.round(100 * (v + cm[i]) / cn[i]) : 0);
+    return {{ nbin, labels, one, two: tot.map((t, i) => t - one[i]), tot, cn }};
+  }}
+
+  function render() {{
+    const C = compute();
+    const prov = C.nbin - 2, xs = C.labels;            // 마지막 두 코호트 = 잠정
+    const pat = i => i >= prov ? "/" : "";
+    const traces = [
+      {{ type: "bar", x: xs, y: C.one, name: "1편", width: 0.7,
+        marker: {{ color: LITE, pattern: {{ shape: xs.map((_, i) => pat(i)),
+                 fillmode: "overlay", fgcolor: "#FFFFFF", size: 5, solidity: 0.4 }} }},
+        customdata: C.cn, hovertemplate: "%{{x}} 데뷔 %{{customdata}}명 · 1편 %{{y}}%<extra></extra>" }},
+    ];
+    if (N > 2) traces.push(
+      {{ type: "bar", x: xs, y: C.two, name: N === 3 ? "2편" : "2–" + (N - 1) + "편", width: 0.7,
+        marker: {{ color: MID, pattern: {{ shape: xs.map((_, i) => pat(i)),
+                 fillmode: "overlay", fgcolor: "#FFFFFF", size: 5, solidity: 0.4 }} }},
+        hovertemplate: "%{{x}} · " + (N === 3 ? "2편" : "2–" + (N - 1) + "편") + " %{{y}}%p<extra></extra>" }});
+    traces.push(
+      {{ type: "scatter", mode: "lines+markers", x: xs.slice(0, prov), y: C.tot.slice(0, prov),
+        name: "일회성(" + N + "편 미만) 비율", line: {{ color: INK, width: 2 }},
+        marker: {{ size: 7, color: INK, line: {{ color: "#FFFFFF", width: 1.3 }} }},
+        hovertemplate: "%{{x}} · 일회성 %{{y}}%<extra></extra>" }},
+      {{ type: "scatter", mode: "lines+markers", x: xs.slice(prov - 1), y: C.tot.slice(prov - 1),
+        showlegend: false, line: {{ color: INK, width: 2, dash: "dot" }},
+        marker: {{ size: 7, color: xs.slice(prov - 1).map((_, k) => k === 0 ? INK : "#FFFFFF"),
+                 line: {{ color: INK, width: 1.3 }} }},
+        hovertemplate: "%{{x}} · 일회성 %{{y}}%<extra></extra>" }});
+    const annos = C.tot.map((t, i) => ({{ x: xs[i], y: t, yref: "y", yshift: 10,
+      text: "<b>" + t + "</b>", showarrow: false,
+      bgcolor: "rgba(255,255,255,0.85)", borderpad: 1,
+      font: {{ color: INK, size: 10.5 }} }}));
+    const layout = {{
+      barmode: "stack", bargap: 0.3,
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
+      margin: {{ l: 56, r: 20, t: 30, b: 40 }}, height: 420,
+      legend: {{ orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
+               traceorder: "normal", font: {{ size: 13, color: MUTED }} }},
+      xaxis: {{ tickfont: {{ color: INK, size: 12 }}, fixedrange: true }},
+      yaxis: {{ range: [0, 115], tickvals: [0, 20, 40, 60, 80, 100],
+              title: {{ text: "데뷔 코호트 중 비율 (%)", font: {{ color: MUTED, size: 12 }} }},
+              gridcolor: GRID, tickfont: {{ color: MUTED }}, fixedrange: true }},
+      shapes: [{{ type: "rect", x0: prov - 0.5, x1: C.nbin - 0.5, y0: 0, y1: 115,
+               xref: "x", yref: "y", fillcolor: GRID, opacity: 0.35, line: {{ width: 0 }},
+               layer: "below" }}],
+      annotations: annos,
+      hoverlabel: {{ bgcolor: "#FFFFFF", bordercolor: GRID, font: {{ color: INK }} }},
+    }};
+    document.getElementById("db-def").textContent = "일회성 = 평생 " + N + "편 미만";
+    Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
+  }}
+
+  function segWire(id, fn) {{
+    document.getElementById(id).addEventListener("click", e => {{
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      document.querySelectorAll("#" + id + " button").forEach(b => b.classList.toggle("on", b === btn));
+      fn(parseInt(btn.dataset.v, 10));
+      render();
+    }});
+  }}
+  segWire("seg-db-w", v => {{ W = v; }});
+  segWire("seg-db-n", v => {{ N = v; }});
+
+  async function capture(fmt) {{
+    await Plotly.relayout(gd, {{ paper_bgcolor: "#FFFFFF", plot_bgcolor: "#FFFFFF" }});
+    try {{
+      await Plotly.downloadImage(gd, {{
+        format: fmt, width: 960, height: 420,
+        scale: fmt === "png" ? 4 : 1,
+        filename: "인도철학_데뷔코호트_일회성비율",
+      }});
+    }} finally {{
+      await Plotly.relayout(gd, {{ paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" }});
+    }}
+  }}
+  document.getElementById("dl-db-png").addEventListener("click", () => capture("png"));
+  document.getElementById("dl-db-svg").addEventListener("click", () => capture("svg"));
+
+  render();
+}})();
+</script>
+"""
+
+
+def kci_activity_chart() -> str:
+    """헌신성 ②: 활동 핵심 필진과 그중 인도철학 게재 수. 변수 = 구간 폭(4/5년), 핵심 기준(3~5편)."""
+    return f"""
+<div class="panel">
+  <h2>활동 핵심 필진과 그중 『인도철학』 게재 수</h2>
+  <div class="panel-bar">
+    <div class="ctl"><span class="ctl-label">구간</span>
+      <span class="seg" id="seg-ka-w">
+        <button data-v="4" class="on">4년</button><button data-v="5">5년</button>
+      </span></div>
+    <div class="ctl"><span class="ctl-label">핵심 기준</span>
+      <span class="seg" id="seg-ka-n">
+        <button data-v="3" class="on">3편</button><button data-v="4">4편</button><button data-v="5">5편</button>
+      </span></div>
+    <div class="dl">
+      <button id="dl-ka-png">PNG 저장</button><button id="dl-ka-svg">SVG 저장</button>
+    </div>
+  </div>
+  <div id="chart-ka"></div>
+  <div class="panel-foot">
+    <span id="ka-def">핵심 = 『인도철학』 누적 3편 도달 시점부터</span> ·
+    활동 = 그 구간 KCI 등재(후보)지 게재 · 마지막 구간은 진행 중(잠정) — 자료:
+    <a href="{REPO}/blob/main/data/raw/core_authors_kci_publications.csv">core_authors_kci_publications.csv</a> ·
+    <a href="{REPO}/blob/main/data/raw/non_core_authors_kci_publications.csv">non_core_authors_kci_publications.csv</a> ·
+    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a></div>
+</div>
+
+<script>
+(function () {{
+  const KC = KSIP_KCI;
+  const INK = "{INK}", MUTED = "{MUTED}", GOLD = "{GOLD}", GRID = "{GRID}";
+  const Y0 = 1989, Y1 = 2026;
+  const gd = document.getElementById("chart-ka");
+  let W = 4, N = 3;
+
+  function compute() {{
+    const nbin = Math.floor((Y1 - Y0) / W) + 1;
+    const bin = y => Math.min(Math.floor((y - Y0) / W), nbin - 1);
+    const labels = [];
+    for (let i = 0; i < nbin; i++) {{
+      const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
+      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+    }}
+    const act = Array(nbin).fill(0), indo = Array(nbin).fill(0);
+    KC.forEach(p => {{
+      if (p.j.length < N) return;
+      const cnt = Array(nbin).fill(0);
+      p.j.forEach(y => cnt[bin(y)]++);
+      const cum = []; let c = 0;
+      for (let i = 0; i < nbin; i++) {{ c += cnt[i]; cum.push(c); }}
+      const kAny = Array(nbin).fill(false), kIndo = Array(nbin).fill(false);
+      p.k.forEach(pair => {{ const b = bin(pair[0]); kAny[b] = true; if (pair[1]) kIndo[b] = true; }});
+      for (let i = 0; i < nbin; i++) {{
+        if (!kAny[i] || cum[i] < N) continue;
+        act[i]++;
+        if (kIndo[i]) indo[i]++;
+      }}
+    }});
+    return {{ nbin, labels, act, indo,
+             undercov: bin(2000),
+             pctOut: act.map((a, i) => a ? Math.round(100 * (a - indo[i]) / a) : 0) }};
+  }}
+
+  function render() {{
+    const C = compute();
+    const prov = C.nbin - 1, xs = C.labels;
+    const yMax = Math.max.apply(null, C.act) * 1.22;
+    const traces = [
+      {{ type: "scatter", mode: "lines", x: xs, y: C.indo, showlegend: false,
+        line: {{ width: 0 }}, hoverinfo: "skip" }},
+      {{ type: "scatter", mode: "lines", x: xs, y: C.act, name: "『인도철학』 밖에서만 활동",
+        fill: "tonexty", fillcolor: "rgba(205,199,184,0.6)",
+        line: {{ width: 0 }}, hoverinfo: "skip" }},
+      {{ type: "scatter", mode: "lines+markers", x: xs.slice(0, prov), y: C.act.slice(0, prov),
+        name: "KCI 활동 핵심", line: {{ color: INK, width: 1.9 }},
+        marker: {{ size: 6, color: INK, line: {{ color: "#FFFFFF", width: 1 }} }},
+        hovertemplate: "%{{x}} · 활동 %{{y}}명<extra></extra>" }},
+      {{ type: "scatter", mode: "lines+markers", x: xs.slice(prov - 1), y: C.act.slice(prov - 1),
+        showlegend: false, line: {{ color: INK, width: 1.9, dash: "dot" }},
+        marker: {{ size: 6, color: ["rgba(0,0,0,0)", "#FFFFFF"], line: {{ color: INK, width: 1.2 }} }},
+        hovertemplate: "%{{x}} · 활동 %{{y}}명<extra></extra>" }},
+      {{ type: "scatter", mode: "lines+markers", x: xs.slice(0, prov), y: C.indo.slice(0, prov),
+        name: "『인도철학』 게재", line: {{ color: GOLD, width: 2.3 }},
+        marker: {{ size: 6, color: GOLD, line: {{ color: "#FFFFFF", width: 1 }} }},
+        hovertemplate: "%{{x}} · 게재 %{{y}}명<extra></extra>" }},
+      {{ type: "scatter", mode: "lines+markers", x: xs.slice(prov - 1), y: C.indo.slice(prov - 1),
+        showlegend: false, line: {{ color: GOLD, width: 2.3, dash: "dot" }},
+        marker: {{ size: 6, color: ["rgba(0,0,0,0)", "#FFFFFF"], line: {{ color: GOLD, width: 1.2 }} }},
+        hovertemplate: "%{{x}} · 게재 %{{y}}명<extra></extra>" }},
+    ];
+    const annos = [];
+    C.act.forEach((a, i) => {{
+      if (a) annos.push({{ x: xs[i], y: a, yref: "y", yshift: 11, text: "<b>" + a + "</b>",
+        showarrow: false, bgcolor: "rgba(255,255,255,0.85)", borderpad: 1,
+        font: {{ color: INK, size: 10.5 }} }});
+      if (C.indo[i] && C.indo[i] !== a) annos.push({{ x: xs[i], y: C.indo[i], yref: "y",
+        yshift: -11, text: "<b>" + C.indo[i] + "</b>", showarrow: false,
+        bgcolor: "rgba(255,255,255,0.85)", borderpad: 1,
+        font: {{ color: GOLD, size: 10.5 }} }});
+    }});
+    for (let i = C.nbin - 2; i < C.nbin; i++) {{
+      if (C.act[i] - C.indo[i] >= 3) annos.push({{ x: xs[i], y: (C.act[i] + C.indo[i]) / 2,
+        yref: "y", text: "<b>" + C.pctOut[i] + "%</b>", showarrow: false,
+        font: {{ color: MUTED, size: 11 }} }});
+    }}
+    annos.push({{ x: xs[Math.max(1, Math.floor(C.undercov / 2))], y: yMax * 0.94,
+      yref: "y", text: "KCI 초기 미커버(밖=0 인공값)", showarrow: false,
+      font: {{ color: MUTED, size: 10.5 }} }});
+    const layout = {{
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
+      margin: {{ l: 56, r: 20, t: 30, b: 40 }}, height: 440,
+      legend: {{ orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
+               traceorder: "normal", font: {{ size: 12.5, color: MUTED }} }},
+      xaxis: {{ tickfont: {{ color: INK, size: 12 }}, fixedrange: true }},
+      yaxis: {{ range: [0, yMax],
+              title: {{ text: "핵심 필진 수 (명)", font: {{ color: MUTED, size: 12 }} }},
+              gridcolor: GRID, tickfont: {{ color: MUTED }}, fixedrange: true }},
+      shapes: [{{ type: "rect", x0: -0.5, x1: C.undercov + 0.5, y0: 0, y1: yMax,
+               xref: "x", yref: "y", fillcolor: GRID, opacity: 0.4,
+               line: {{ width: 0 }}, layer: "below" }}],
+      annotations: annos,
+      hoverlabel: {{ bgcolor: "#FFFFFF", bordercolor: GRID, font: {{ color: INK }} }},
+    }};
+    document.getElementById("ka-def").textContent =
+      "핵심 = 『인도철학』 누적 " + N + "편 도달 시점부터";
+    Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
+  }}
+
+  function segWire(id, fn) {{
+    document.getElementById(id).addEventListener("click", e => {{
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      document.querySelectorAll("#" + id + " button").forEach(b => b.classList.toggle("on", b === btn));
+      fn(parseInt(btn.dataset.v, 10));
+      render();
+    }});
+  }}
+  segWire("seg-ka-w", v => {{ W = v; }});
+  segWire("seg-ka-n", v => {{ N = v; }});
+
+  async function capture(fmt) {{
+    await Plotly.relayout(gd, {{ paper_bgcolor: "#FFFFFF", plot_bgcolor: "#FFFFFF" }});
+    try {{
+      await Plotly.downloadImage(gd, {{
+        format: fmt, width: 960, height: 440,
+        scale: fmt === "png" ? 4 : 1,
+        filename: "인도철학_활동핵심_게재수",
+      }});
+    }} finally {{
+      await Plotly.relayout(gd, {{ paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" }});
+    }}
+  }}
+  document.getElementById("dl-ka-png").addEventListener("click", () => capture("png"));
+  document.getElementById("dl-ka-svg").addEventListener("click", () => capture("svg"));
+
+  render();
+}})();
+</script>
+"""
+
+
+def devotion_chart() -> str:
+    """헌신성 ③: 게재 핵심의 평균 헌신도. 변수 = 구간 폭(4/5년), 핵심 기준(3~5편)."""
+    return f"""
+<div class="panel">
+  <h2>『인도철학』 게재 핵심의 평균 헌신도</h2>
+  <div class="panel-bar">
+    <div class="ctl"><span class="ctl-label">구간</span>
+      <span class="seg" id="seg-dv-w">
+        <button data-v="4" class="on">4년</button><button data-v="5">5년</button>
+      </span></div>
+    <div class="ctl"><span class="ctl-label">핵심 기준</span>
+      <span class="seg" id="seg-dv-n">
+        <button data-v="3" class="on">3편</button><button data-v="4">4편</button><button data-v="5">5편</button>
+      </span></div>
+    <div class="dl">
+      <button id="dl-dv-png">PNG 저장</button><button id="dl-dv-svg">SVG 저장</button>
+    </div>
+  </div>
+  <div id="chart-dv"></div>
+  <div class="panel-foot">헌신도 = 그 구간 자기 KCI 논문 중 『인도철학』 비율(게재 핵심만 평균) ·
+    N = 게재 핵심 수 · 마지막 구간은 진행 중(잠정) — 자료:
+    <a href="{REPO}/blob/main/data/raw/core_authors_kci_publications.csv">core_authors_kci_publications.csv</a> ·
+    <a href="{REPO}/blob/main/data/raw/non_core_authors_kci_publications.csv">non_core_authors_kci_publications.csv</a> ·
+    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a></div>
+</div>
+
+<script>
+(function () {{
+  const KC = KSIP_KCI;
+  const INK = "{INK}", MUTED = "{MUTED}", GOLD = "{GOLD}", GRID = "{GRID}";
+  const Y0 = 1989, Y1 = 2026;
+  const gd = document.getElementById("chart-dv");
+  let W = 4, N = 3;
+
+  function compute() {{
+    const nbin = Math.floor((Y1 - Y0) / W) + 1;
+    const bin = y => Math.min(Math.floor((y - Y0) / W), nbin - 1);
+    const labels = [];
+    for (let i = 0; i < nbin; i++) {{
+      const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
+      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+    }}
+    const sums = Array(nbin).fill(0), ncon = Array(nbin).fill(0);
+    KC.forEach(p => {{
+      if (p.j.length < N) return;
+      const cnt = Array(nbin).fill(0);
+      p.j.forEach(y => cnt[bin(y)]++);
+      const cum = []; let c = 0;
+      for (let i = 0; i < nbin; i++) {{ c += cnt[i]; cum.push(c); }}
+      const tot = Array(nbin).fill(0), ind = Array(nbin).fill(0);
+      p.k.forEach(pair => {{ const b = bin(pair[0]); tot[b]++; if (pair[1]) ind[b]++; }});
+      for (let i = 0; i < nbin; i++) {{
+        if (!ind[i] || cum[i] < N) continue;
+        ncon[i]++;
+        sums[i] += 100 * ind[i] / tot[i];
+      }}
+    }});
+    return {{ nbin, labels, ncon,
+             avg: sums.map((s, i) => ncon[i] ? Math.round(s / ncon[i]) : 0),
+             undercov: bin(2000) }};
+  }}
+
+  function render() {{
+    const C = compute();
+    const prov = C.nbin - 1, xs = C.labels;
+    let S = 0;
+    while (S < C.nbin && C.ncon[S] === 0) S++;
+    const traces = [
+      {{ type: "scatter", mode: "lines+markers", x: xs.slice(S, prov), y: C.avg.slice(S, prov),
+        showlegend: false, line: {{ color: GOLD, width: 2.3 }},
+        marker: {{ size: 7, color: GOLD, line: {{ color: "#FFFFFF", width: 1.1 }} }},
+        hovertemplate: "%{{x}} · 평균 헌신도 %{{y}}%<extra></extra>" }},
+      {{ type: "scatter", mode: "lines+markers", x: xs.slice(prov - 1), y: C.avg.slice(prov - 1),
+        showlegend: false, line: {{ color: GOLD, width: 2.3, dash: "dot" }},
+        marker: {{ size: 7, color: ["rgba(0,0,0,0)", "#FFFFFF"], line: {{ color: GOLD, width: 1.3 }} }},
+        hovertemplate: "%{{x}} · 평균 헌신도 %{{y}}%<extra></extra>" }},
+    ];
+    const annos = [];
+    for (let i = S; i < C.nbin; i++) {{
+      const v = C.avg[i], up = v < 95;
+      annos.push({{ x: xs[i], y: v, yref: "y", yshift: up ? 10 : -12,
+        text: "<b>" + v + "%</b>", showarrow: false,
+        bgcolor: "rgba(255,255,255,0.8)", borderpad: 1,
+        font: {{ color: i <= C.undercov ? MUTED : INK, size: 10.5 }} }});
+    }}
+    C.ncon.forEach((n, i) => annos.push({{ x: xs[i], y: -13, yref: "y", text: "N=" + n,
+      showarrow: false, font: {{ color: MUTED, size: 10 }} }}));
+    annos.push({{ x: xs[Math.max(1, Math.floor(C.undercov / 2))], y: 14, yref: "y",
+      text: "KCI 초기 미커버(헌신도 과대)", showarrow: false,
+      font: {{ color: MUTED, size: 10.5 }} }});
+    const layout = {{
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
+      margin: {{ l: 56, r: 20, t: 20, b: 40 }}, height: 440,
+      showlegend: false,
+      xaxis: {{ tickfont: {{ color: INK, size: 12 }}, fixedrange: true }},
+      yaxis: {{ range: [-20, 112], tickvals: [0, 25, 50, 75, 100],
+              ticktext: ["0", "25", "50", "75", "100%"],
+              title: {{ text: "평균 개인 헌신도 (자기 논문 중 %)", font: {{ color: MUTED, size: 12 }} }},
+              gridcolor: GRID, tickfont: {{ color: MUTED }}, fixedrange: true }},
+      shapes: [
+        {{ type: "rect", x0: -0.5, x1: C.undercov + 0.5, y0: -20, y1: 112, xref: "x", yref: "y",
+          fillcolor: GRID, opacity: 0.4, line: {{ width: 0 }}, layer: "below" }},
+        {{ type: "rect", x0: prov - 0.5, x1: C.nbin - 0.5, y0: -20, y1: 112, xref: "x", yref: "y",
+          fillcolor: GRID, opacity: 0.22, line: {{ width: 0 }}, layer: "below" }},
+      ],
+      annotations: annos,
+      hoverlabel: {{ bgcolor: "#FFFFFF", bordercolor: GRID, font: {{ color: INK }} }},
+    }};
+    Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
+  }}
+
+  function segWire(id, fn) {{
+    document.getElementById(id).addEventListener("click", e => {{
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      document.querySelectorAll("#" + id + " button").forEach(b => b.classList.toggle("on", b === btn));
+      fn(parseInt(btn.dataset.v, 10));
+      render();
+    }});
+  }}
+  segWire("seg-dv-w", v => {{ W = v; }});
+  segWire("seg-dv-n", v => {{ N = v; }});
+
+  async function capture(fmt) {{
+    await Plotly.relayout(gd, {{ paper_bgcolor: "#FFFFFF", plot_bgcolor: "#FFFFFF" }});
+    try {{
+      await Plotly.downloadImage(gd, {{
+        format: fmt, width: 960, height: 440,
+        scale: fmt === "png" ? 4 : 1,
+        filename: "인도철학_게재핵심_평균헌신도",
+      }});
+    }} finally {{
+      await Plotly.relayout(gd, {{ paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" }});
+    }}
+  }}
+  document.getElementById("dl-dv-png").addEventListener("click", () => capture("png"));
+  document.getElementById("dl-dv-svg").addEventListener("click", () => capture("svg"));
+
+  render();
+}})();
+</script>
+"""
+
+
 PENDING = '<div class="panel"><div class="pending">그래프 준비 중</div></div>'
 
 
@@ -1422,7 +1913,8 @@ def main() -> None:
                               + activity_chart() + stockflow_chart(), True),
         "department.html": (dept_data_script() + dept_composition_chart()
                             + dept_share_chart() + dept_flow_chart(), True),
-        "commitment.html": (PENDING, False),
+        "commitment.html": (commit_data_script() + debut_chart()
+                            + kci_activity_chart() + devotion_chart(), True),
     }
     for slug, title in PAGES:
         body, needs_plotly = contents[slug]
