@@ -529,6 +529,191 @@ def top_authors_chart() -> str:
 """
 
 
+def _author_years() -> list[list[int]]:
+    """주저자(동명이인 분리)별 발행연도 목록 — 시계열 차트들의 공통 입력."""
+    papers = pd.read_parquet(ROOT / "data" / "processed" / "papers.parquet")
+    authors = pd.read_parquet(ROOT / "data" / "processed" / "authors.parquet")
+    papers["주저자"] = papers["논문 ID"].map(
+        authors.sort_index().groupby("논문ID")["저자_원본"].first())
+    ks = papers["주저자"] == "김성철"
+    papers.loc[ks, "주저자"] = ["김성철#유식" if "금강" in str(a) else "김성철#중관"
+                                for a in papers.loc[ks, "주저자 소속기관"].fillna("")]
+    papers.loc[papers["주저자"] == "김미숙", "주저자"] = "김미숙#자이나"
+    jp = papers[papers["발행연도"].notna() & papers["주저자"].notna()]
+    return [sorted(int(y) for y in g) for _, g in jp.groupby("주저자")["발행연도"]]
+
+
+def activity_chart() -> str:
+    """핵심 필진 ③: 시기별 활동 필자 수 + 핵심 논문 점유율.
+    변수 = 구간 폭(4/5년), 핵심 기준(누적 2/3/4/5편)."""
+    ay = _author_years()
+    assert len(ay) == 207 and sum(len(a) for a in ay) == 641
+    ay_js = json.dumps(ay)
+    return f"""
+<div class="panel">
+  <h2>시기별 활동 필자 수</h2>
+  <div class="panel-bar">
+    <div class="ctl"><span class="ctl-label">구간</span>
+      <span class="seg" id="seg-act-w">
+        <button data-v="4" class="on">4년</button><button data-v="5">5년</button>
+      </span></div>
+    <div class="ctl"><span class="ctl-label">핵심 기준</span>
+      <span class="seg" id="seg-act-n">
+        <button data-v="2">2편</button><button data-v="3" class="on">3편</button><button data-v="4">4편</button><button data-v="5">5편</button>
+      </span></div>
+    <div class="dl">
+      <button id="dl-act-png">PNG 저장</button><button id="dl-act-svg">SVG 저장</button>
+    </div>
+  </div>
+  <div id="chart-act"></div>
+  <div class="panel-foot">주저자 기준 · 동명이인 분리 · 마지막 구간은 진행 중(잠정) — 자료:
+    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
+    <a href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a></div>
+</div>
+
+<script>
+(function () {{
+  const AY = {ay_js};                      // 주저자별 발행연도 목록
+  const INK = "{INK}", MUTED = "{MUTED}", GOLD = "{GOLD}", GRID = "{GRID}";
+  const GRAY = "#CDC7B8";
+  const Y0 = 1989, Y1 = 2026;
+  const gd = document.getElementById("chart-act");
+  let W = 4, N = 3;
+
+  function compute() {{
+    const nbin = Math.floor((Y1 - Y0) / W) + 1;
+    const bin = y => Math.min(Math.floor((y - Y0) / W), nbin - 1);
+    const labels = [];
+    for (let i = 0; i < nbin; i++) {{
+      const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
+      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+    }}
+    const core = Array(nbin).fill(0), total = Array(nbin).fill(0);
+    const shN = Array(nbin).fill(0), shD = Array(nbin).fill(0);
+    AY.forEach(years => {{
+      const cnt = Array(nbin).fill(0);
+      years.forEach(y => cnt[bin(y)]++);
+      let cum = 0;
+      for (let b = 0; b < nbin; b++) {{
+        cum += cnt[b];
+        if (cnt[b] > 0) {{
+          total[b]++;
+          if (cum >= N) core[b]++;
+          shD[b] += cnt[b];
+          if (cum >= N) shN[b] += cnt[b];
+        }}
+      }}
+    }});
+    const share = shD.map((d, b) => d > 0 ? Math.round(100 * shN[b] / d) : 0);
+    return {{ nbin, labels, core, total, noncore: total.map((t, b) => t - core[b]), share }};
+  }}
+
+  function render() {{
+    const C = compute();
+    const prov = C.nbin - 1;               // 마지막 구간 = 잠정
+    const xs = C.labels;
+    const provOp = i => i === prov ? 0.5 : 1;
+
+    const traces = [
+      {{ type: "bar", x: xs, y: C.core, name: "핵심 · " + N + "편 이상",
+        width: 0.7,
+        marker: {{ color: GOLD, opacity: xs.map((_, i) => provOp(i)),
+                 pattern: {{ shape: xs.map((_, i) => i === prov ? "/" : ""),
+                           fillmode: "overlay", fgcolor: "#FFFFFF", size: 5, solidity: 0.4 }} }},
+        hovertemplate: "%{{x}} · 핵심 %{{y}}명<extra></extra>" }},
+      {{ type: "bar", x: xs, y: C.noncore, name: "일회성 필진",
+        width: 0.7,
+        marker: {{ color: GRAY, opacity: xs.map((_, i) => provOp(i)),
+                 pattern: {{ shape: xs.map((_, i) => i === prov ? "/" : ""),
+                           fillmode: "overlay", fgcolor: "#FFFFFF", size: 5, solidity: 0.4 }} }},
+        hovertemplate: "%{{x}} · 일회성 %{{y}}명<extra></extra>" }},
+      // 점유율 선: 확정 구간 실선
+      {{ type: "scatter", mode: "lines+markers", x: xs.slice(0, prov), y: C.share.slice(0, prov),
+        yaxis: "y2", showlegend: false,
+        line: {{ color: INK, width: 2 }},
+        marker: {{ size: 7, color: INK, line: {{ color: "#FFFFFF", width: 1.2 }} }},
+        hovertemplate: "%{{x}} · 점유율 %{{y}}%<extra></extra>" }},
+      // 잠정 구간 점선 + 빈 마커
+      {{ type: "scatter", mode: "lines+markers", x: xs.slice(prov - 1), y: C.share.slice(prov - 1),
+        yaxis: "y2", showlegend: false,
+        line: {{ color: INK, width: 2, dash: "dot" }},
+        marker: {{ size: 7, color: ["rgba(0,0,0,0)", "#FFFFFF"],
+                 line: {{ color: INK, width: 1.2 }} }},
+        hovertemplate: "%{{x}} · 점유율 %{{y}}%<extra></extra>" }},
+    ];
+
+    const annos = [];
+    C.core.forEach((c, i) => {{               // 핵심 수 라벨
+      if (c === 0) return;
+      const inside = c >= 15;
+      annos.push({{ x: xs[i], y: inside ? c / 2 : c + 1.4, yref: "y",
+        text: "<b>" + c + "</b>", showarrow: false,
+        yanchor: inside ? "middle" : "bottom",
+        font: {{ color: inside ? (i === prov ? INK : "#FFFFFF") : GOLD, size: 12 }} }});
+    }});
+    C.total.forEach((t, i) => {{              // 활동 총계 라벨 (막대 위)
+      annos.push({{ x: xs[i], y: t + 1.6, yref: "y", text: String(t), showarrow: false,
+        yanchor: "bottom", font: {{ color: MUTED, size: 10.5 }} }});
+    }});
+    C.share.forEach((s, i) => {{              // 점유율 값 라벨 (마커 위)
+      annos.push({{ x: xs[i], y: s, yref: "y2", yshift: 11, text: "<b>" + s + "</b>",
+        showarrow: false, font: {{ color: INK, size: 10.5 }} }});
+    }});
+
+    const layout = {{
+      barmode: "stack", bargap: 0.3,
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
+      margin: {{ l: 56, r: 56, t: 30, b: 40 }}, height: 460,
+      legend: {{ orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
+               traceorder: "normal", font: {{ size: 13, color: MUTED }} }},
+      xaxis: {{ tickfont: {{ color: INK, size: 12 }}, fixedrange: true }},
+      yaxis: {{ range: [0, 150], tickvals: [0, 30, 60, 90],
+              title: {{ text: "활동 필자 수 (명)", font: {{ color: MUTED, size: 12 }} }},
+              gridcolor: GRID, tickfont: {{ color: MUTED }}, fixedrange: true }},
+      yaxis2: {{ range: [0, 100], tickvals: [0, 20, 40, 60, 80, 100],
+               overlaying: "y", side: "right",
+               title: {{ text: "핵심 논문 점유율 (%)", font: {{ color: INK, size: 12 }} }},
+               showgrid: false, tickfont: {{ color: MUTED }}, fixedrange: true }},
+      annotations: annos,
+      hoverlabel: {{ bgcolor: "#FFFFFF", bordercolor: GRID, font: {{ color: INK }} }},
+    }};
+    Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
+  }}
+
+  function segWire(id, fn) {{
+    document.getElementById(id).addEventListener("click", e => {{
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      document.querySelectorAll("#" + id + " button").forEach(b => b.classList.toggle("on", b === btn));
+      fn(parseInt(btn.dataset.v, 10));
+      render();
+    }});
+  }}
+  segWire("seg-act-w", v => {{ W = v; }});
+  segWire("seg-act-n", v => {{ N = v; }});
+
+  async function capture(fmt) {{
+    await Plotly.relayout(gd, {{ paper_bgcolor: "#FFFFFF", plot_bgcolor: "#FFFFFF" }});
+    try {{
+      await Plotly.downloadImage(gd, {{
+        format: fmt, width: 960, height: 460,
+        scale: fmt === "png" ? 4 : 1,
+        filename: "인도철학_시기별_활동필자수",
+      }});
+    }} finally {{
+      await Plotly.relayout(gd, {{ paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" }});
+    }}
+  }}
+  document.getElementById("dl-act-png").addEventListener("click", () => capture("png"));
+  document.getElementById("dl-act-svg").addEventListener("click", () => capture("svg"));
+
+  render();
+}})();
+</script>
+"""
+
+
 PENDING = '<div class="panel"><div class="pending">그래프 준비 중</div></div>'
 
 
@@ -536,7 +721,8 @@ def main() -> None:
     DOCS.mkdir(exist_ok=True)
     contents = {
         "index.html": (overview_chart(), True),
-        "core-authors.html": (asymmetry_chart() + top_authors_chart() + PENDING, True),
+        "core-authors.html": (asymmetry_chart() + top_authors_chart()
+                              + activity_chart() + PENDING, True),
         "department.html": (PENDING, False),
         "commitment.html": (PENDING, False),
     }

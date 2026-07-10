@@ -295,6 +295,168 @@
   render();
 })();
 </script>
+
+<div class="panel">
+  <h2>시기별 활동 필자 수</h2>
+  <div class="panel-bar">
+    <div class="ctl"><span class="ctl-label">구간</span>
+      <span class="seg" id="seg-act-w">
+        <button data-v="4" class="on">4년</button><button data-v="5">5년</button>
+      </span></div>
+    <div class="ctl"><span class="ctl-label">핵심 기준</span>
+      <span class="seg" id="seg-act-n">
+        <button data-v="2">2편</button><button data-v="3" class="on">3편</button><button data-v="4">4편</button><button data-v="5">5편</button>
+      </span></div>
+    <div class="dl">
+      <button id="dl-act-png">PNG 저장</button><button id="dl-act-svg">SVG 저장</button>
+    </div>
+  </div>
+  <div id="chart-act"></div>
+  <div class="panel-foot">주저자 기준 · 동명이인 분리 · 마지막 구간은 진행 중(잠정) — 자료:
+    <a href="https://github.com/naspatterns/ksip_writers/blob/main/data/processed/papers.csv">papers.csv</a> ·
+    <a href="https://github.com/naspatterns/ksip_writers/blob/main/data/processed/authors.csv">authors.csv</a></div>
+</div>
+
+<script>
+(function () {
+  const AY = [[2002], [2002], [2002], [2002], [2004], [2004], [2013, 2014], [2012], [2004, 2007, 2010, 2018], [2002], [2003], [2011, 2013, 2014, 2015, 2016, 2017, 2018], [2008], [2020], [2011], [1989], [2022], [2018], [2018], [2008], [2007, 2012, 2017, 2018], [2013], [1997], [2010, 2014, 2017, 2019], [2026], [1989], [2015], [2004], [2015], [2024], [2002, 2003, 2005, 2006, 2010, 2011, 2012, 2013, 2013, 2014], [2012], [2000], [1992], [2012, 2017, 2017, 2019, 2021, 2024, 2024], [1989, 1994, 1995, 1996, 1997, 1998, 1999, 2002, 2004, 2004, 2005, 2007], [2017, 2021], [2010, 2013, 2014, 2020], [2002, 2009, 2011, 2013, 2017, 2019, 2024], [1993, 1995, 1999, 1999, 2000, 2006], [2023, 2025], [2002], [2021], [2023], [2021], [2009, 2013], [2008, 2009, 2013, 2015, 2017, 2018, 2020, 2020, 2022], [2008, 2010, 2016, 2017, 2017, 2019, 2022, 2023, 2025], [2010], [1994, 1996, 2005], [2008], [2018], [2022], [2004, 2006, 2010, 2011, 2013, 2015, 2016, 2017, 2018, 2020, 2024, 2026], [2015, 2016], [2025], [1989], [2011], [2013, 2019, 2024], [2013, 2014, 2014, 2016], [1997], [1992, 1994, 1996, 1997, 1998, 2000, 2001, 2004, 2006, 2007, 2007, 2009, 2010, 2012, 2014, 2017, 2020, 2021, 2023], [2009, 2012, 2013], [2012, 2016, 2022], [1995, 1997, 2010, 2017], [2019, 2020], [2014], [1997], [2021], [2014, 2018, 2019, 2020, 2020, 2021, 2021, 2023, 2024], [2014], [1992, 1993, 2004, 2006, 2008], [2015], [2019, 2023], [2014], [2015, 2017, 2018, 2019], [2014, 2014, 2015, 2015, 2017, 2018, 2018, 2019, 2019, 2019, 2022], [2007, 2009, 2014, 2015, 2016, 2018, 2019], [2014, 2019, 2020, 2025], [2011], [1999, 2000, 2008, 2010, 2013, 2020], [2014], [1995, 2002, 2012, 2013], [2015], [2018], [2008], [2009, 2011], [2006, 2010, 2012, 2014, 2015, 2018], [2024], [2004, 2007, 2008, 2009, 2010, 2011, 2012, 2012, 2013, 2014, 2015, 2016, 2017, 2019, 2020, 2021, 2022], [2025, 2025], [2018, 2019, 2020, 2022, 2023, 2024], [2017], [2002, 2003, 2015], [2005, 2007, 2012], [2021, 2022], [2005], [1989, 1993, 1994, 1996, 1998, 2002], [2006], [1996, 2011], [1989, 1992, 1996, 2005], [2011], [2014], [2011, 2012, 2012, 2016, 2016, 2018, 2018, 2019, 2022], [2017, 2021], [2025], [2007, 2011], [1996], [1997, 2001, 2003, 2011, 2015, 2017, 2019], [2008, 2015, 2016, 2017, 2019, 2019, 2022], [2005], [2002, 2003, 2005, 2005, 2006, 2007, 2008, 2009, 2011, 2014, 2014, 2015, 2016, 2017, 2018, 2019], [1996], [2000, 2001, 2011, 2012], [2007, 2012, 2013, 2015, 2016, 2020], [2014], [2015], [2016, 2019, 2019, 2020, 2023, 2023, 2024, 2025], [2020], [2001, 2002], [2022, 2025], [2016], [2006], [2005, 2006, 2007, 2008, 2011], [2008], [1989], [1994, 2017, 2018], [2010, 2012, 2022], [1994, 1995, 2002, 2002, 2004, 2009, 2010, 2013, 2017], [2022], [2019], [2017, 2018, 2022], [2022], [2013], [2002], [2018], [1989, 1994, 1995, 2002, 2006, 2009, 2010], [2024], [2025], [2012], [2014], [2005, 2011, 2012, 2014, 2016, 2017], [2007], [1994], [2022], [2001, 2004, 2010], [2002, 2011, 2013], [2023, 2024], [1998], [2023], [1989, 1992, 1993, 1993, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2002, 2003, 2004, 2004, 2007, 2009], [2019, 2026], [2009], [1993, 1995, 1996, 1997, 1998, 2000, 2002, 2006, 2010, 2011, 2012, 2014, 2014, 2016, 2018, 2019, 2020, 2021, 2025], [1989, 1992], [2008, 2012, 2015], [2024], [1995, 2002], [1992, 1994, 1999, 2000, 2002, 2006], [2010, 2010, 2011], [1995, 2001, 2004, 2011, 2017], [2011], [2015], [2017], [2007], [2025], [1992], [1989], [2016, 2017, 2018, 2020], [1998, 2006, 2006, 2007, 2013], [2022, 2022, 2026], [1989, 1992, 1993, 1994, 1995, 1996, 1997, 1999, 2000, 2001, 2004, 2004, 2005, 2007, 2007, 2008, 2008, 2009, 2010, 2010, 2011, 2012, 2012, 2012, 2013, 2014, 2014, 2015, 2016, 2018, 2019], [2009], [2010, 2012], [1998], [2014], [2019], [2017, 2018, 2019], [2021], [2015], [2004, 2022, 2024], [1993, 1994, 1998, 2009, 2011, 2013, 2016], [2017], [2013], [1997, 2010], [2009], [2024, 2026], [2009], [2021, 2024], [1993, 1999, 2005, 2009, 2010], [2008, 2013, 2018, 2021, 2023, 2025, 2025], [2020], [2021], [2014], [2014], [2024, 2025], [2014], [2012], [2016, 2016, 2021, 2024, 2024, 2025], [2009, 2015], [1989], [2006], [1999], [2003, 2004, 2005, 2006, 2006, 2007, 2009, 2010, 2010, 2011, 2013, 2014, 2015], [2004, 2006, 2007, 2014, 2014], [2016], [2004, 2005, 2017]];                      // 주저자별 발행연도 목록
+  const INK = "#1C1B19", MUTED = "#6E675C", GOLD = "#B8911F", GRID = "#E4E2DA";
+  const GRAY = "#CDC7B8";
+  const Y0 = 1989, Y1 = 2026;
+  const gd = document.getElementById("chart-act");
+  let W = 4, N = 3;
+
+  function compute() {
+    const nbin = Math.floor((Y1 - Y0) / W) + 1;
+    const bin = y => Math.min(Math.floor((y - Y0) / W), nbin - 1);
+    const labels = [];
+    for (let i = 0; i < nbin; i++) {
+      const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
+      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+    }
+    const core = Array(nbin).fill(0), total = Array(nbin).fill(0);
+    const shN = Array(nbin).fill(0), shD = Array(nbin).fill(0);
+    AY.forEach(years => {
+      const cnt = Array(nbin).fill(0);
+      years.forEach(y => cnt[bin(y)]++);
+      let cum = 0;
+      for (let b = 0; b < nbin; b++) {
+        cum += cnt[b];
+        if (cnt[b] > 0) {
+          total[b]++;
+          if (cum >= N) core[b]++;
+          shD[b] += cnt[b];
+          if (cum >= N) shN[b] += cnt[b];
+        }
+      }
+    });
+    const share = shD.map((d, b) => d > 0 ? Math.round(100 * shN[b] / d) : 0);
+    return { nbin, labels, core, total, noncore: total.map((t, b) => t - core[b]), share };
+  }
+
+  function render() {
+    const C = compute();
+    const prov = C.nbin - 1;               // 마지막 구간 = 잠정
+    const xs = C.labels;
+    const provOp = i => i === prov ? 0.5 : 1;
+
+    const traces = [
+      { type: "bar", x: xs, y: C.core, name: "핵심 · " + N + "편 이상",
+        width: 0.7,
+        marker: { color: GOLD, opacity: xs.map((_, i) => provOp(i)),
+                 pattern: { shape: xs.map((_, i) => i === prov ? "/" : ""),
+                           fillmode: "overlay", fgcolor: "#FFFFFF", size: 5, solidity: 0.4 } },
+        hovertemplate: "%{x} · 핵심 %{y}명<extra></extra>" },
+      { type: "bar", x: xs, y: C.noncore, name: "일회성 필진",
+        width: 0.7,
+        marker: { color: GRAY, opacity: xs.map((_, i) => provOp(i)),
+                 pattern: { shape: xs.map((_, i) => i === prov ? "/" : ""),
+                           fillmode: "overlay", fgcolor: "#FFFFFF", size: 5, solidity: 0.4 } },
+        hovertemplate: "%{x} · 일회성 %{y}명<extra></extra>" },
+      // 점유율 선: 확정 구간 실선
+      { type: "scatter", mode: "lines+markers", x: xs.slice(0, prov), y: C.share.slice(0, prov),
+        yaxis: "y2", showlegend: false,
+        line: { color: INK, width: 2 },
+        marker: { size: 7, color: INK, line: { color: "#FFFFFF", width: 1.2 } },
+        hovertemplate: "%{x} · 점유율 %{y}%<extra></extra>" },
+      // 잠정 구간 점선 + 빈 마커
+      { type: "scatter", mode: "lines+markers", x: xs.slice(prov - 1), y: C.share.slice(prov - 1),
+        yaxis: "y2", showlegend: false,
+        line: { color: INK, width: 2, dash: "dot" },
+        marker: { size: 7, color: ["rgba(0,0,0,0)", "#FFFFFF"],
+                 line: { color: INK, width: 1.2 } },
+        hovertemplate: "%{x} · 점유율 %{y}%<extra></extra>" },
+    ];
+
+    const annos = [];
+    C.core.forEach((c, i) => {               // 핵심 수 라벨
+      if (c === 0) return;
+      const inside = c >= 15;
+      annos.push({ x: xs[i], y: inside ? c / 2 : c + 1.4, yref: "y",
+        text: "<b>" + c + "</b>", showarrow: false,
+        yanchor: inside ? "middle" : "bottom",
+        font: { color: inside ? (i === prov ? INK : "#FFFFFF") : GOLD, size: 12 } });
+    });
+    C.total.forEach((t, i) => {              // 활동 총계 라벨 (막대 위)
+      annos.push({ x: xs[i], y: t + 1.6, yref: "y", text: String(t), showarrow: false,
+        yanchor: "bottom", font: { color: MUTED, size: 10.5 } });
+    });
+    C.share.forEach((s, i) => {              // 점유율 값 라벨 (마커 위)
+      annos.push({ x: xs[i], y: s, yref: "y2", yshift: 11, text: "<b>" + s + "</b>",
+        showarrow: false, font: { color: INK, size: 10.5 } });
+    });
+
+    const layout = {
+      barmode: "stack", bargap: 0.3,
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: { family: "'Noto Sans KR', sans-serif", color: INK, size: 14 },
+      margin: { l: 56, r: 56, t: 30, b: 40 }, height: 460,
+      legend: { orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
+               traceorder: "normal", font: { size: 13, color: MUTED } },
+      xaxis: { tickfont: { color: INK, size: 12 }, fixedrange: true },
+      yaxis: { range: [0, 150], tickvals: [0, 30, 60, 90],
+              title: { text: "활동 필자 수 (명)", font: { color: MUTED, size: 12 } },
+              gridcolor: GRID, tickfont: { color: MUTED }, fixedrange: true },
+      yaxis2: { range: [0, 100], tickvals: [0, 20, 40, 60, 80, 100],
+               overlaying: "y", side: "right",
+               title: { text: "핵심 논문 점유율 (%)", font: { color: INK, size: 12 } },
+               showgrid: false, tickfont: { color: MUTED }, fixedrange: true },
+      annotations: annos,
+      hoverlabel: { bgcolor: "#FFFFFF", bordercolor: GRID, font: { color: INK } },
+    };
+    Plotly.react(gd, traces, layout, { displayModeBar: false, responsive: true });
+  }
+
+  function segWire(id, fn) {
+    document.getElementById(id).addEventListener("click", e => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      document.querySelectorAll("#" + id + " button").forEach(b => b.classList.toggle("on", b === btn));
+      fn(parseInt(btn.dataset.v, 10));
+      render();
+    });
+  }
+  segWire("seg-act-w", v => { W = v; });
+  segWire("seg-act-n", v => { N = v; });
+
+  async function capture(fmt) {
+    await Plotly.relayout(gd, { paper_bgcolor: "#FFFFFF", plot_bgcolor: "#FFFFFF" });
+    try {
+      await Plotly.downloadImage(gd, {
+        format: fmt, width: 960, height: 460,
+        scale: fmt === "png" ? 4 : 1,
+        filename: "인도철학_시기별_활동필자수",
+      });
+    } finally {
+      await Plotly.relayout(gd, { paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" });
+    }
+  }
+  document.getElementById("dl-act-png").addEventListener("click", () => capture("png"));
+  document.getElementById("dl-act-svg").addEventListener("click", () => capture("svg"));
+
+  render();
+})();
+</script>
 <div class="panel"><div class="pending">그래프 준비 중</div></div>
     </main>
   </div>
