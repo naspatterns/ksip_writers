@@ -268,6 +268,166 @@ def overview_chart() -> str:
 """
 
 
+def asymmetry_chart() -> str:
+    """핵심 필진 ①: 필자·논문 비대칭. 변수 = 핵심 기준(누적 N편, 2/3/4/5)."""
+    papers = pd.read_parquet(ROOT / "data" / "processed" / "papers.parquet")
+    authors = pd.read_parquet(ROOT / "data" / "processed" / "authors.parquet")
+    papers["주저자"] = papers["논문 ID"].map(
+        authors.sort_index().groupby("논문ID")["저자_원본"].first())
+    ks = papers["주저자"] == "김성철"
+    papers.loc[ks, "주저자"] = ["김성철#유식" if "금강" in str(a) else "김성철#중관"
+                                for a in papers.loc[ks, "주저자 소속기관"].fillna("")]
+    papers.loc[papers["주저자"] == "김미숙", "주저자"] = "김미숙#자이나"
+    life = papers.groupby("주저자").size()
+    hist = {int(k): int(v) for k, v in life.value_counts().sort_index().items()}
+    n_authors, n_papers = int(life.size), int(life.sum())
+    assert (n_authors, n_papers) == (207, 641), (n_authors, n_papers)
+
+    hist_js = json.dumps(hist)
+    return f"""
+<div class="panel">
+  <h2>필자 구성 개관</h2>
+  <div class="panel-bar">
+    <div class="ctl"><span class="ctl-label">핵심 기준</span>
+      <span class="seg" id="seg-asym-n">
+        <button data-v="2">2편</button><button data-v="3" class="on">3편</button><button data-v="4">4편</button><button data-v="5">5편</button>
+      </span></div>
+    <div class="dl">
+      <button id="dl-asym-png">PNG 저장</button><button id="dl-asym-svg">SVG 저장</button>
+    </div>
+  </div>
+  <div id="chart-asym"></div>
+  <div class="panel-foot">주저자 기준 · 동명이인 분리 — 자료:
+    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
+    <a href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a></div>
+</div>
+
+<script>
+(function () {{
+  const HIST = {hist_js};
+  const TOT_P = {n_authors}, TOT_W = {n_papers};
+  const INK = "{INK}", MUTED = "{MUTED}", GOLD = "{GOLD}";
+  const MID = "#A8A294", LITE = "#D8D5CC";
+  const gd = document.getElementById("chart-asym");
+  let N = 3;
+
+  function sum(from, to, fn) {{
+    let s = 0;
+    for (const k in HIST) {{
+      const kk = parseInt(k, 10);
+      if (kk >= from && kk <= to) s += fn(kk, HIST[k]);
+    }}
+    return s;
+  }}
+
+  function render() {{
+    // 세그먼트: 핵심(N편 이상) / 2–(N-1)편 / 1편
+    const segs = [
+      {{ name: "핵심 필진 · " + N + "편 이상", color: GOLD, tcol: "#FFFFFF",
+        p: sum(N, 99, (k, c) => c), w: sum(N, 99, (k, c) => k * c) }},
+    ];
+    if (N > 2) segs.push(
+      {{ name: N === 3 ? "2편" : "2–" + (N - 1) + "편", color: MID, tcol: INK,
+        p: sum(2, N - 1, (k, c) => c), w: sum(2, N - 1, (k, c) => k * c) }});
+    segs.push(
+      {{ name: "일회성 · 1편", color: LITE, tcol: INK,
+        p: HIST[1] || 0, w: HIST[1] || 0 }});
+
+    const ROWS = [
+      {{ y: "필자 " + TOT_P + "명", tot: TOT_P, key: "p", unit: "명", pos: 1 }},
+      {{ y: "논문 " + TOT_W + "편", tot: TOT_W, key: "w", unit: "편", pos: 0 }},
+    ];
+    const traces = [], annos = [];
+    segs.forEach(seg => {{
+      const xs = [], texts = [];
+      ROWS.forEach(r => {{
+        const cnt = seg[r.key];
+        const pct = cnt / r.tot * 100;
+        xs.push(Math.round(pct * 10) / 10);
+        const label = Math.round(pct) + "% · " + cnt + r.unit;
+        texts.push(pct >= 15 ? label : "");
+        if (pct < 15 && pct > 0) {{
+          // 좁은 칸 → 막대 밖 리더선 (필자 행은 위, 논문 행은 아래)
+          let left = 0;
+          for (const s2 of segs) {{ if (s2 === seg) break; left += s2[r.key] / r.tot * 100; }}
+          const up = r.pos === 1;
+          annos.push({{
+            x: left + pct / 2, y: r.pos + (up ? 0.26 : -0.26),
+            ax: 0, ay: up ? -22 : 22,
+            text: label, showarrow: true, arrowhead: 0, arrowwidth: 0.8,
+            arrowcolor: MUTED, font: {{ color: MUTED, size: 11 }},
+          }});
+        }}
+      }});
+      traces.push({{
+        type: "bar", orientation: "h",
+        y: ROWS.map(r => r.y), x: xs,
+        width: 0.52,
+        name: seg.name,
+        marker: {{ color: seg.color, line: {{ color: "#FFFFFF", width: 1.4 }} }},
+        text: texts, textposition: "inside", insidetextanchor: "middle",
+        textangle: 0,
+        textfont: {{ color: seg.tcol, size: 13 }},
+        customdata: ROWS.map(r => seg[r.key] + r.unit),
+        hovertemplate: seg.name + " · %{{customdata}} (%{{x}}%)<extra></extra>",
+      }});
+    }});
+
+    // 핵심 확장 리본 (필자 막대 아래변 → 논문 막대 위변)
+    const cA = segs[0].p / TOT_P * 100, cW = segs[0].w / TOT_W * 100;
+    const ribbon = {{
+      type: "path",
+      path: "M 0,0.74 L " + cA + ",0.74 L " + cW + ",0.26 L 0,0.26 Z",
+      fillcolor: "rgba(184,145,31,0.12)", line: {{ width: 0 }}, layer: "below",
+    }};
+
+    const layout = {{
+      barmode: "stack",
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
+      margin: {{ l: 96, r: 16, t: 34, b: 12 }}, height: 300,
+      showlegend: true,
+      legend: {{ orientation: "h", yanchor: "bottom", y: 1.06, x: 0, traceorder: "normal",
+               font: {{ size: 13, color: MUTED }} }},
+      xaxis: {{ range: [0, 100.5], visible: false, fixedrange: true }},
+      yaxis: {{ tickfont: {{ color: INK, size: 14 }}, categoryorder: "array",
+              categoryarray: [ROWS[1].y, ROWS[0].y], fixedrange: true }},
+      shapes: [ribbon],
+      annotations: annos,
+      hoverlabel: {{ bgcolor: "#FFFFFF", bordercolor: "{GRID}", font: {{ color: INK }} }},
+    }};
+    Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
+  }}
+
+  document.getElementById("seg-asym-n").addEventListener("click", e => {{
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    document.querySelectorAll("#seg-asym-n button").forEach(b => b.classList.toggle("on", b === btn));
+    N = parseInt(btn.dataset.v, 10);
+    render();
+  }});
+
+  async function capture(fmt) {{
+    await Plotly.relayout(gd, {{ paper_bgcolor: "#FFFFFF", plot_bgcolor: "#FFFFFF" }});
+    try {{
+      await Plotly.downloadImage(gd, {{
+        format: fmt, width: 960, height: 300,
+        scale: fmt === "png" ? 4 : 1,
+        filename: "인도철학_필자_구성_개관",
+      }});
+    }} finally {{
+      await Plotly.relayout(gd, {{ paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" }});
+    }}
+  }}
+  document.getElementById("dl-asym-png").addEventListener("click", () => capture("png"));
+  document.getElementById("dl-asym-svg").addEventListener("click", () => capture("svg"));
+
+  render();
+}})();
+</script>
+"""
+
+
 PENDING = '<div class="panel"><div class="pending">그래프 준비 중</div></div>'
 
 
@@ -275,7 +435,7 @@ def main() -> None:
     DOCS.mkdir(exist_ok=True)
     contents = {
         "index.html": (overview_chart(), True),
-        "core-authors.html": (PENDING, False),
+        "core-authors.html": (asymmetry_chart() + PENDING, True),
         "department.html": (PENDING, False),
         "commitment.html": (PENDING, False),
     }
