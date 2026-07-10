@@ -1,0 +1,25 @@
+# ── 비밀키: 절대 커밋 금지 ──
+KCI_OpenAPI_Key*.txt
+*.key
+.env
+.env.*
+secrets.toml
+.streamlit/secrets.toml
+
+# ── 캐시·대용량 ──
+cache/
+__pycache__/
+*.pyc
+.venv/
+
+# ── OS/편집기 ──
+.DS_Store
+Icon?
+._*
+.idea/
+.vscode/
+
+# ── 백업 파일 ──
+*.bak
+*.bak?
+*.prebak
