@@ -3,83 +3,207 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>&lt;인도철학&gt;은 왜 점점 얇아지고 있는가?</title>
+<title>개관 — &lt;인도철학&gt;은 왜 점점 얇아지고 있는가?</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
 <style>
-  :root { --ink:#1C1B19; --gold:#B8911F; --muted:#6E675C; --grid:#E4E2DA; --paper:#FAF9F5; }
+  :root { --ink:#1C1B19; --gold:#B8911F; --muted:#6E675C; --grid:#E4E2DA; --paper:#FAF9F5; --barbg:#EFE9DA; }
   * { box-sizing:border-box; margin:0; }
   body { background:var(--paper); color:var(--ink); font-family:'Noto Sans KR',sans-serif;
          line-height:1.7; -webkit-font-smoothing:antialiased; }
-  .wrap { max-width:960px; margin:0 auto; padding:0 24px; }
-  header { padding:72px 0 40px; border-bottom:1px solid var(--grid); }
-  .kicker { color:var(--gold); font-weight:700; letter-spacing:.14em; font-size:.82rem; }
-  h1 { font-family:'Noto Serif KR',serif; font-size:clamp(1.6rem,4vw,2.4rem); line-height:1.35; margin:.5em 0 .3em; }
-  .subtitle { color:var(--muted); font-size:1.02rem; max-width:44em; }
-  section { padding:48px 0; }
-  h2 { font-family:'Noto Serif KR',serif; font-size:1.3rem; margin-bottom:.4em; }
-  .note { color:var(--muted); font-size:.9rem; }
-  .chart { margin-top:20px; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-top:24px; }
-  .card { border:1px solid var(--grid); border-radius:10px; padding:20px; background:#fff; }
-  .card-kicker { color:var(--gold); font-size:.78rem; font-weight:700; letter-spacing:.1em; }
-  .card h3 { font-family:'Noto Serif KR',serif; margin:.3em 0; font-size:1.05rem; }
-  .card p { color:var(--muted); font-size:.88rem; }
-  .badge { display:inline-block; margin-top:12px; padding:2px 10px; border-radius:99px;
-           border:1px solid var(--grid); color:var(--muted); font-size:.75rem; }
-  footer { border-top:1px solid var(--grid); padding:32px 0 56px; color:var(--muted); font-size:.85rem; }
   a { color:var(--ink); }
+
+  /* 상단 배너 */
+  .banner { border-bottom:1px solid var(--grid); padding:28px 32px 22px; }
+  .banner .kicker { color:var(--gold); font-weight:700; letter-spacing:.14em; font-size:.75rem; }
+  .banner h1 { font-family:'Noto Serif KR',serif; font-size:clamp(1.15rem,2.6vw,1.6rem); line-height:1.4; margin:.2em 0 .1em; }
+  .banner .subtitle { color:var(--muted); font-size:.88rem; }
+
+  /* 좌측 탭 + 콘텐츠 */
+  .frame { display:flex; min-height:calc(100vh - 110px); }
+  nav { width:172px; flex:none; padding:28px 0 28px 20px; }
+  nav a { display:block; padding:9px 14px; margin-bottom:2px; text-decoration:none; color:var(--muted);
+          border-left:2px solid transparent; font-size:.95rem; }
+  nav a:hover { color:var(--ink); }
+  nav a.on { color:var(--ink); font-weight:700; border-left-color:var(--gold); }
+  main { flex:1; min-width:0; padding:28px 32px 64px; max-width:1000px; }
+
+  /* 차트 패널 */
+  .panel { background:#fff; border:1px solid var(--grid); border-radius:12px; padding:22px 24px; margin-bottom:28px; }
+  .panel h2 { font-family:'Noto Serif KR',serif; font-size:1.12rem; margin-bottom:2px; }
+  .panel-bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px 18px; margin:10px 0 4px; }
+  .ctl { display:flex; align-items:center; gap:6px; }
+  .ctl-label { color:var(--muted); font-size:.8rem; }
+  .seg { display:inline-flex; border:1px solid var(--grid); border-radius:8px; overflow:hidden; }
+  .seg button { border:0; background:#fff; padding:4px 12px; font:inherit; font-size:.82rem;
+                color:var(--muted); cursor:pointer; }
+  .seg button + button { border-left:1px solid var(--grid); }
+  .seg button.on { background:var(--barbg); color:var(--ink); font-weight:500; }
+  .dl { margin-left:auto; display:flex; gap:6px; }
+  .dl button { border:1px solid var(--grid); border-radius:8px; background:#fff; padding:4px 12px;
+               font:inherit; font-size:.82rem; color:var(--muted); cursor:pointer; }
+  .dl button:hover { color:var(--ink); border-color:var(--muted); }
+  .panel-foot { margin-top:8px; color:var(--muted); font-size:.8rem; }
+  .panel-foot a { color:var(--muted); }
+  .pending { color:var(--muted); padding:48px 0; text-align:center; }
+
+  footer { border-top:1px solid var(--grid); padding:20px 32px 40px; color:var(--muted); font-size:.82rem; }
+
+  @media (max-width: 760px) {
+    .frame { flex-direction:column; }
+    nav { width:auto; display:flex; padding:10px 16px 0; border-bottom:1px solid var(--grid); }
+    nav a { border-left:0; border-bottom:2px solid transparent; padding:8px 12px; }
+    nav a.on { border-bottom-color:var(--gold); }
+    main { padding:20px 16px 48px; }
+  }
 </style>
 </head>
 <body>
-  <header><div class="wrap">
+  <div class="banner">
     <div class="kicker">데이터로 읽는 학술지</div>
     <h1>&lt;인도철학&gt;은 왜 점점 얇아지고 있는가?</h1>
-    <p class="subtitle">핵심 필진, 인도철학과, 그리고 헌신성으로 본 &lt;인도철학&gt; 필진 구성의 추이.
-    논문과 함께 공개하는 인터랙티브 대시보드입니다.</p>
-  </div></header>
+    <div class="subtitle">핵심 필진, 인도철학과, 그리고 헌신성으로 본 &lt;인도철학&gt; 필진 구성의 추이</div>
+  </div>
+  <div class="frame">
+    <nav>
+      <a href="index.html" class="on">개관</a>
+      <a href="core-authors.html">핵심 필진</a>
+      <a href="department.html">인도철학과</a>
+      <a href="commitment.html">헌신성</a>
+    </nav>
+    <main>
 
-  <section><div class="wrap">
-    <h2>『인도철학』 연도별 논문 발행수</h2>
-    <p class="note">전수 641편 · 제1–76집 (1989–2026) · 배경 막대 = 4년 구간 연평균 (막대 안 숫자).
-    원자료는 <a href="https://github.com/">저장소의 data/</a>에서 표로 열람할 수 있습니다.</p>
-    <div class="chart"><div>                        <script>window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
-        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.5.0.min.js" integrity="sha256-fHbNLP+GlIXN+efbQec78UkemUz3NJp7UmfGxC1tNxs=" crossorigin="anonymous"></script>                <div id="2cc1c1b7-22b8-4486-91ae-9d312141ee4d" class="plotly-graph-div" style="height:420px; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("2cc1c1b7-22b8-4486-91ae-9d312141ee4d")) {                    Plotly.newPlot(                        "2cc1c1b7-22b8-4486-91ae-9d312141ee4d",                        [{"constraintext":"none","customdata":[["1989\u20131992"],["1993\u20131996"],["1997\u20132000"],["2001\u20132004"],["2005\u20132008"],["2009\u20132012"],["2013\u20132016"],["2017\u20132020"],["2021\u20132024"],["2025\u20132026"]],"hovertemplate":"%{customdata[0]} \uc5f0\ud3c9\uade0 %{y}\ud3b8\u003cextra\u003e\u003c\u002fextra\u003e","insidetextanchor":"start","marker":{"color":"#EFE9DA","line":{"width":0}},"name":"4\ub144 \uad6c\uac04 \uc5f0\ud3c9\uade0","text":["5.5","11.0","9.5","15.0","17.8","25.0","27.8","26.5","17.0","10.5"],"textangle":0,"textfont":{"color":"#6E675C","size":11},"textposition":"inside","width":[3.8,3.8,3.8,3.8,3.8,3.8,3.8,3.8,3.8,1.8],"x":[1990.5,1994.5,1998.5,2002.5,2006.5,2010.5,2014.5,2018.5,2022.5,2025.5],"y":[5.5,11.0,9.5,15.0,17.8,25.0,27.8,26.5,17.0,10.5],"type":"bar"},{"hovertemplate":"%{x}\ub144 \u00b7 %{y}\ud3b8\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#1C1B19","width":2},"mode":"lines","name":"\uc5f0\ub3c4\ubcc4 \ubc1c\ud589 \ud3b8\uc218","x":[1989,1990,1991,1992,1993,1994,1995,1996,1997,1998,1999,2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026],"y":[13,0,0,9,10,12,11,11,11,9,9,9,8,24,7,21,15,19,20,17,21,26,26,27,26,36,26,23,31,27,29,19,17,20,12,19,16,5],"type":"scatter"}],                        {"template":{"data":{"scatter":[{"type":"scatter"}]}},"annotations":[{"font":{"color":"#6E675C","size":12},"showarrow":false,"text":"\ud734\uac04 1990\u201391","x":1990.2,"xanchor":"left","y":16.5,"yanchor":"bottom"},{"font":{"color":"#6E675C","size":12},"showarrow":false,"text":"2014\ub144 36\ud3b8","x":2014,"y":36,"yshift":12}],"font":{"family":"'Noto Sans KR', sans-serif","color":"#1C1B19","size":14},"margin":{"l":40,"r":16,"t":8,"b":36},"hoverlabel":{"font":{"color":"#1C1B19"},"bgcolor":"#FFFFFF","bordercolor":"#E4E2DA"},"legend":{"font":{"size":13,"color":"#6E675C"},"orientation":"h","yanchor":"bottom","y":1.02,"x":0},"paper_bgcolor":"rgba(0,0,0,0)","plot_bgcolor":"rgba(0,0,0,0)","height":420,"hovermode":"x unified","bargap":0,"xaxis":{"tickfont":{"color":"#6E675C"},"showgrid":false,"zeroline":false,"dtick":5,"range":[1988.2,2026.8]},"yaxis":{"tickfont":{"color":"#6E675C"},"gridcolor":"#E4E2DA","zeroline":false,"rangemode":"tozero"}},                        {"displayModeBar": false, "responsive": true}                    )                };            </script>        </div></div>
-  </section></div>
-
-  <section><div class="wrap">
-    <h2>세 가지 압박</h2>
-    <div class="grid">
-      <div class="card">
-        <div class="card-kicker">쇠퇴의 첫인상</div>
-        <h3>서론</h3>
-        <p>연도별 발행 편수가 그려내는 최근 10년의 하강 곡선.</p>
-        <span class="badge">준비 중</span>
-      </div>
-      <div class="card">
-        <div class="card-kicker">첫 번째 압박</div>
-        <h3>핵심 필진</h3>
-        <p>학술지를 지탱해 온 핵심 필진층이 얇아지고 있다.</p>
-        <span class="badge">준비 중</span>
-      </div>
-      <div class="card">
-        <div class="card-kicker">두 번째 압박</div>
-        <h3>인도철학과</h3>
-        <p>핵심 필진을 길러내던 제도적 기반이 사라졌다.</p>
-        <span class="badge">준비 중</span>
-      </div>
-      <div class="card">
-        <div class="card-kicker">세 번째 압박</div>
-        <h3>헌신성</h3>
-        <p>남은 필진의 <인도철학>에 대한 헌신도가 떨어지고 있다.</p>
-        <span class="badge">준비 중</span>
-      </div>
+<div class="panel">
+  <h2>『인도철학』 연도별 논문 발행수</h2>
+  <div class="panel-bar">
+    <div class="ctl"><span class="ctl-label">구간</span>
+      <span class="seg" id="seg-binw">
+        <button data-v="4" class="on">4년</button><button data-v="5">5년</button><button data-v="0">없음</button>
+      </span></div>
+    <div class="ctl"><span class="ctl-label">기간</span>
+      <span class="seg" id="seg-range">
+        <button data-v="all" class="on">전체</button><button data-v="2000">2000년~</button><button data-v="recent">최근 10년</button>
+      </span></div>
+    <div class="dl">
+      <button id="dl-png">PNG 저장</button><button id="dl-svg">SVG 저장</button>
     </div>
-  </div></section>
+  </div>
+  <div id="chart-overview"></div>
+  <div class="panel-foot">자료:
+    <a href="https://github.com/naspatterns/ksip_writers/blob/main/data/processed/papers.csv">papers.csv</a></div>
+</div>
 
-  <footer><div class="wrap">
-    자료: KCI(한국학술지인용색인) · 동국대학교 dCollection —
-    수집·가공 과정과 원본 데이터는 저장소의 <code>data/README.md</code> 참조.
-  </div></footer>
+<script>
+(function () {
+  const D = {"years": [1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026], "n": [13, 0, 0, 9, 10, 12, 11, 11, 11, 9, 9, 9, 8, 24, 7, 21, 15, 19, 20, 17, 21, 26, 26, 27, 26, 36, 26, 23, 31, 27, 29, 19, 17, 20, 12, 19, 16, 5]};
+  const INK = "#1C1B19", MUTED = "#6E675C", GRID = "#E4E2DA", BARBG = "#EFE9DA";
+  const gd = document.getElementById("chart-overview");
+  let binw = 4, range = "all";
+
+  function bins(w) {
+    const out = [];
+    for (let b0 = 1989; b0 <= 2026; b0 += w) {
+      const b1 = Math.min(b0 + w - 1, 2026);
+      const span = D.n.slice(b0 - 1989, b1 - 1989 + 1);
+      const avg = Math.round(span.reduce((a, c) => a + c, 0) / span.length * 10) / 10;
+      out.push({ b0, b1, avg });
+    }
+    return out;
+  }
+
+  function xrange() {
+    if (range === "2000") return [1999.2, 2026.8];
+    if (range === "recent") return [2016.2, 2026.8];
+    return [1988.2, 2026.8];
+  }
+
+  function render() {
+    const traces = [];
+    const xr = xrange();
+    if (binw > 0) {
+      const B = bins(binw);
+      traces.push({
+        type: "bar",
+        x: B.map(b => (b.b0 + b.b1) / 2),
+        y: B.map(b => b.avg),
+        width: B.map(b => b.b1 - b.b0 + 0.8),
+        marker: { color: BARBG, line: { width: 0 } },
+        text: B.map(b => {
+          const c = (b.b0 + b.b1) / 2;
+          return (c >= xr[0] && c <= xr[1]) ? String(b.avg) : "";
+        }),
+        textposition: "inside", insidetextanchor: "start", textangle: 0,
+        constraintext: "none",
+        textfont: { color: MUTED, size: 11 },
+        customdata: B.map(b => b.b0 + "–" + b.b1),
+        hovertemplate: "%{customdata} 연평균 %{y}편<extra></extra>",
+        name: binw + "년 구간 연평균",
+      });
+    }
+    traces.push({
+      type: "scatter", mode: "lines",
+      x: D.years, y: D.n,
+      line: { color: INK, width: 2 },
+      hovertemplate: "%{x}년 · %{y}편<extra></extra>",
+      name: "연도별 발행 편수",
+    });
+    const layout = {
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: { family: "'Noto Sans KR', sans-serif", color: INK, size: 14 },
+      margin: { l: 40, r: 16, t: 8, b: 36 }, height: 420,
+      hovermode: "x unified",
+      hoverlabel: { bgcolor: "#FFFFFF", bordercolor: GRID, font: { color: INK } },
+      showlegend: binw > 0,
+      legend: { orientation: "h", yanchor: "bottom", y: 1.02, x: 0,
+               font: { size: 13, color: MUTED } },
+      bargap: 0,
+      xaxis: { showgrid: false, zeroline: false, dtick: 5, range: xr,
+              tickfont: { color: MUTED } },
+      yaxis: { gridcolor: GRID, zeroline: false, rangemode: "tozero",
+              tickfont: { color: MUTED } },
+      annotations: [{ x: 1990.2, y: 16.5, text: "휴간 1990–91", showarrow: false,
+                     xanchor: "left", yanchor: "bottom",
+                     font: { color: MUTED, size: 12 } }],
+    };
+    Plotly.react(gd, traces, layout, { displayModeBar: false, responsive: true });
+  }
+
+  function segWire(id, fn) {
+    const seg = document.getElementById(id);
+    seg.addEventListener("click", e => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      seg.querySelectorAll("button").forEach(b => b.classList.toggle("on", b === btn));
+      fn(btn.dataset.v);
+      render();
+    });
+  }
+  segWire("seg-binw", v => { binw = parseInt(v, 10); });
+  segWire("seg-range", v => { range = v; });
+
+  async function capture(fmt) {
+    await Plotly.relayout(gd, { paper_bgcolor: "#FFFFFF", plot_bgcolor: "#FFFFFF" });
+    try {
+      await Plotly.downloadImage(gd, {
+        format: fmt, width: 960, height: 420,
+        scale: fmt === "png" ? 4 : 1,
+        filename: "인도철학_연도별_발행수",
+      });
+    } finally {
+      await Plotly.relayout(gd, { paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" });
+    }
+  }
+  document.getElementById("dl-png").addEventListener("click", () => capture("png"));
+  document.getElementById("dl-svg").addEventListener("click", () => capture("svg"));
+
+  render();
+})();
+</script>
+
+    </main>
+  </div>
+  <footer>자료: KCI(한국학술지인용색인) · 동국대학교 dCollection —
+    원본 데이터와 수집·가공 과정은 <a href="https://github.com/naspatterns/ksip_writers/blob/main/data/README.md">data/README.md</a> 참조</footer>
 </body>
 </html>

@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
 """data/를 읽어 GitHub Pages용 정적 대시보드(docs/)를 생성한다.
 
-현재 페이지: index.html (랜딩 + 서론 차트 '연도별 논문 발행수')
-장별 상세 페이지는 이후 단계에서 추가한다.
+구성: 상단 제목 배너 + 왼쪽 섹션 탭 + 콘텐츠.
+페이지: index.html(개관) · core-authors.html(핵심 필진) ·
+        department.html(인도철학과) · commitment.html(헌신성)
+
+차트 공통 규격:
+  - 조절 변수 1–2개 (버튼 그룹)
+  - 캡처 버튼: PNG(4배율, 흰 배경) + SVG — 사용자가 조절한 현재 상태 그대로 저장
+  - 그래프 아래 원본 데이터 링크(GitHub 파일 페이지)
+  - 해석적 설명 없음. 범례·각주는 의미 왜곡을 막는 최소한만.
 
 사용법:
     python3 scripts/build_dashboard.py
 """
+import json
 from pathlib import Path
 
 import pandas as pd
-import plotly.graph_objects as go
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
+REPO = "https://github.com/naspatterns/ksip_writers"
 
 # 논문 표지 팔레트
 INK = "#1C1B19"
@@ -23,150 +31,260 @@ GRID = "#E4E2DA"
 BARBG = "#EFE9DA"
 PAPER = "#FAF9F5"
 
-YEAR0, YEAR1, BINW = 1989, 2026, 4
-
-
-def yearly_chart() -> str:
-    papers = pd.read_parquet(ROOT / "data" / "processed" / "papers.parquet")
-    counts = papers["발행연도"].dropna().astype(int).value_counts()
-    years = list(range(YEAR0, YEAR1 + 1))
-    n = [int(counts.get(y, 0)) for y in years]
-    assert sum(n) == 641, sum(n)
-
-    # 4년 구간 연평균 (마지막 구간은 2년)
-    bins = []
-    for b0 in range(YEAR0, YEAR1 + 1, BINW):
-        b1 = min(b0 + BINW - 1, YEAR1)
-        span = [c for y, c in zip(years, n) if b0 <= y <= b1]
-        bins.append((b0, b1, round(sum(span) / len(span), 1)))
-
-    fig = go.Figure()
-    fig.add_trace(go.Bar(
-        x=[(b0 + b1) / 2 for b0, b1, _ in bins],
-        y=[avg for *_, avg in bins],
-        width=[b1 - b0 + 0.8 for b0, b1, _ in bins],
-        marker_color=BARBG, marker_line_width=0,
-        text=[f"{avg}" for *_, avg in bins],
-        textposition="inside", insidetextanchor="start", textangle=0,
-        constraintext="none",
-        textfont=dict(color=MUTED, size=11),
-        customdata=[[f"{b0}–{b1}"] for b0, b1, _ in bins],
-        hovertemplate="%{customdata[0]} 연평균 %{y}편<extra></extra>",
-        name="4년 구간 연평균",
-    ))
-    fig.add_trace(go.Scatter(
-        x=years, y=n, mode="lines",
-        line=dict(color=INK, width=2),
-        hovertemplate="%{x}년 · %{y}편<extra></extra>",
-        name="연도별 발행 편수",
-    ))
-    fig.add_annotation(x=1990.2, y=16.5, text="휴간 1990–91", showarrow=False,
-                       font=dict(color=MUTED, size=12), xanchor="left", yanchor="bottom")
-    fig.add_annotation(x=2014, y=36, text="2014년 36편", showarrow=False,
-                       font=dict(color=MUTED, size=12), yshift=12)
-    fig.update_layout(
-        template="none", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="'Noto Sans KR', sans-serif", color=INK, size=14),
-        margin=dict(l=40, r=16, t=8, b=36), height=420,
-        hovermode="x unified",
-        hoverlabel=dict(bgcolor="#FFFFFF", bordercolor=GRID, font=dict(color=INK)),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0,
-                    font=dict(size=13, color=MUTED)),
-        bargap=0,
-    )
-    fig.update_xaxes(showgrid=False, zeroline=False, tickfont=dict(color=MUTED),
-                     dtick=5, range=[YEAR0 - 0.8, YEAR1 + 0.8])
-    fig.update_yaxes(gridcolor=GRID, zeroline=False, tickfont=dict(color=MUTED),
-                     rangemode="tozero")
-    return fig.to_html(full_html=False, include_plotlyjs="cdn",
-                       config={"displayModeBar": False, "responsive": True})
-
-
-SECTIONS = [
-    ("서론", "쇠퇴의 첫인상", "연도별 발행 편수가 그려내는 최근 10년의 하강 곡선."),
-    ("핵심 필진", "첫 번째 압박", "학술지를 지탱해 온 핵심 필진층이 얇아지고 있다."),
-    ("인도철학과", "두 번째 압박", "핵심 필진을 길러내던 제도적 기반이 사라졌다."),
-    ("헌신성", "세 번째 압박", "남은 필진의 <인도철학>에 대한 헌신도가 떨어지고 있다."),
+PAGES = [
+    ("index.html", "개관"),
+    ("core-authors.html", "핵심 필진"),
+    ("department.html", "인도철학과"),
+    ("commitment.html", "헌신성"),
 ]
 
+CSS = f"""
+  :root {{ --ink:{INK}; --gold:{GOLD}; --muted:{MUTED}; --grid:{GRID}; --paper:{PAPER}; --barbg:{BARBG}; }}
+  * {{ box-sizing:border-box; margin:0; }}
+  body {{ background:var(--paper); color:var(--ink); font-family:'Noto Sans KR',sans-serif;
+         line-height:1.7; -webkit-font-smoothing:antialiased; }}
+  a {{ color:var(--ink); }}
 
-def build_index() -> None:
-    chart = yearly_chart()
-    cards = "\n".join(
-        f'''      <div class="card">
-        <div class="card-kicker">{kicker}</div>
-        <h3>{name}</h3>
-        <p>{desc}</p>
-        <span class="badge">준비 중</span>
-      </div>'''
-        for name, kicker, desc in SECTIONS)
+  /* 상단 배너 */
+  .banner {{ border-bottom:1px solid var(--grid); padding:28px 32px 22px; }}
+  .banner .kicker {{ color:var(--gold); font-weight:700; letter-spacing:.14em; font-size:.75rem; }}
+  .banner h1 {{ font-family:'Noto Serif KR',serif; font-size:clamp(1.15rem,2.6vw,1.6rem); line-height:1.4; margin:.2em 0 .1em; }}
+  .banner .subtitle {{ color:var(--muted); font-size:.88rem; }}
 
-    html = f'''<!DOCTYPE html>
+  /* 좌측 탭 + 콘텐츠 */
+  .frame {{ display:flex; min-height:calc(100vh - 110px); }}
+  nav {{ width:172px; flex:none; padding:28px 0 28px 20px; }}
+  nav a {{ display:block; padding:9px 14px; margin-bottom:2px; text-decoration:none; color:var(--muted);
+          border-left:2px solid transparent; font-size:.95rem; }}
+  nav a:hover {{ color:var(--ink); }}
+  nav a.on {{ color:var(--ink); font-weight:700; border-left-color:var(--gold); }}
+  main {{ flex:1; min-width:0; padding:28px 32px 64px; max-width:1000px; }}
+
+  /* 차트 패널 */
+  .panel {{ background:#fff; border:1px solid var(--grid); border-radius:12px; padding:22px 24px; margin-bottom:28px; }}
+  .panel h2 {{ font-family:'Noto Serif KR',serif; font-size:1.12rem; margin-bottom:2px; }}
+  .panel-bar {{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 18px; margin:10px 0 4px; }}
+  .ctl {{ display:flex; align-items:center; gap:6px; }}
+  .ctl-label {{ color:var(--muted); font-size:.8rem; }}
+  .seg {{ display:inline-flex; border:1px solid var(--grid); border-radius:8px; overflow:hidden; }}
+  .seg button {{ border:0; background:#fff; padding:4px 12px; font:inherit; font-size:.82rem;
+                color:var(--muted); cursor:pointer; }}
+  .seg button + button {{ border-left:1px solid var(--grid); }}
+  .seg button.on {{ background:var(--barbg); color:var(--ink); font-weight:500; }}
+  .dl {{ margin-left:auto; display:flex; gap:6px; }}
+  .dl button {{ border:1px solid var(--grid); border-radius:8px; background:#fff; padding:4px 12px;
+               font:inherit; font-size:.82rem; color:var(--muted); cursor:pointer; }}
+  .dl button:hover {{ color:var(--ink); border-color:var(--muted); }}
+  .panel-foot {{ margin-top:8px; color:var(--muted); font-size:.8rem; }}
+  .panel-foot a {{ color:var(--muted); }}
+  .pending {{ color:var(--muted); padding:48px 0; text-align:center; }}
+
+  footer {{ border-top:1px solid var(--grid); padding:20px 32px 40px; color:var(--muted); font-size:.82rem; }}
+
+  @media (max-width: 760px) {{
+    .frame {{ flex-direction:column; }}
+    nav {{ width:auto; display:flex; padding:10px 16px 0; border-bottom:1px solid var(--grid); }}
+    nav a {{ border-left:0; border-bottom:2px solid transparent; padding:8px 12px; }}
+    nav a.on {{ border-bottom-color:var(--gold); }}
+    main {{ padding:20px 16px 48px; }}
+  }}
+"""
+
+
+def page(slug: str, title: str, content: str, *, plotly: bool = False) -> str:
+    nav = "\n".join(
+        f'      <a href="{s}"{" class=\"on\"" if s == slug else ""}>{t}</a>'
+        for s, t in PAGES)
+    plotly_tag = ('<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" '
+                  'charset="utf-8"></script>' if plotly else "")
+    return f"""<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>&lt;인도철학&gt;은 왜 점점 얇아지고 있는가?</title>
+<title>{title} — &lt;인도철학&gt;은 왜 점점 얇아지고 있는가?</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet">
-<style>
-  :root {{ --ink:{INK}; --gold:{GOLD}; --muted:{MUTED}; --grid:{GRID}; --paper:{PAPER}; }}
-  * {{ box-sizing:border-box; margin:0; }}
-  body {{ background:var(--paper); color:var(--ink); font-family:'Noto Sans KR',sans-serif;
-         line-height:1.7; -webkit-font-smoothing:antialiased; }}
-  .wrap {{ max-width:960px; margin:0 auto; padding:0 24px; }}
-  header {{ padding:72px 0 40px; border-bottom:1px solid var(--grid); }}
-  .kicker {{ color:var(--gold); font-weight:700; letter-spacing:.14em; font-size:.82rem; }}
-  h1 {{ font-family:'Noto Serif KR',serif; font-size:clamp(1.6rem,4vw,2.4rem); line-height:1.35; margin:.5em 0 .3em; }}
-  .subtitle {{ color:var(--muted); font-size:1.02rem; max-width:44em; }}
-  section {{ padding:48px 0; }}
-  h2 {{ font-family:'Noto Serif KR',serif; font-size:1.3rem; margin-bottom:.4em; }}
-  .note {{ color:var(--muted); font-size:.9rem; }}
-  .chart {{ margin-top:20px; }}
-  .grid {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-top:24px; }}
-  .card {{ border:1px solid var(--grid); border-radius:10px; padding:20px; background:#fff; }}
-  .card-kicker {{ color:var(--gold); font-size:.78rem; font-weight:700; letter-spacing:.1em; }}
-  .card h3 {{ font-family:'Noto Serif KR',serif; margin:.3em 0; font-size:1.05rem; }}
-  .card p {{ color:var(--muted); font-size:.88rem; }}
-  .badge {{ display:inline-block; margin-top:12px; padding:2px 10px; border-radius:99px;
-           border:1px solid var(--grid); color:var(--muted); font-size:.75rem; }}
-  footer {{ border-top:1px solid var(--grid); padding:32px 0 56px; color:var(--muted); font-size:.85rem; }}
-  a {{ color:var(--ink); }}
-</style>
+{plotly_tag}
+<style>{CSS}</style>
 </head>
 <body>
-  <header><div class="wrap">
+  <div class="banner">
     <div class="kicker">데이터로 읽는 학술지</div>
     <h1>&lt;인도철학&gt;은 왜 점점 얇아지고 있는가?</h1>
-    <p class="subtitle">핵심 필진, 인도철학과, 그리고 헌신성으로 본 &lt;인도철학&gt; 필진 구성의 추이.
-    논문과 함께 공개하는 인터랙티브 대시보드입니다.</p>
-  </div></header>
-
-  <section><div class="wrap">
-    <h2>『인도철학』 연도별 논문 발행수</h2>
-    <p class="note">전수 641편 · 제1–76집 (1989–2026) · 배경 막대 = 4년 구간 연평균 (막대 안 숫자).
-    원자료는 <a href="https://github.com/">저장소의 data/</a>에서 표로 열람할 수 있습니다.</p>
-    <div class="chart">{chart}</div>
-  </section></div>
-
-  <section><div class="wrap">
-    <h2>세 가지 압박</h2>
-    <div class="grid">
-{cards}
-    </div>
-  </div></section>
-
-  <footer><div class="wrap">
-    자료: KCI(한국학술지인용색인) · 동국대학교 dCollection —
-    수집·가공 과정과 원본 데이터는 저장소의 <code>data/README.md</code> 참조.
-  </div></footer>
+    <div class="subtitle">핵심 필진, 인도철학과, 그리고 헌신성으로 본 &lt;인도철학&gt; 필진 구성의 추이</div>
+  </div>
+  <div class="frame">
+    <nav>
+{nav}
+    </nav>
+    <main>
+{content}
+    </main>
+  </div>
+  <footer>자료: KCI(한국학술지인용색인) · 동국대학교 dCollection —
+    원본 데이터와 수집·가공 과정은 <a href="{REPO}/blob/main/data/README.md">data/README.md</a> 참조</footer>
 </body>
 </html>
-'''
+"""
+
+
+def overview_chart() -> str:
+    """개관: 연도별 논문 발행수. 변수 = 구간 폭(4년/5년/없음), 기간(전체/2000~/최근 10년)."""
+    papers = pd.read_parquet(ROOT / "data" / "processed" / "papers.parquet")
+    counts = papers["발행연도"].dropna().astype(int).value_counts()
+    years = list(range(1989, 2027))
+    n = [int(counts.get(y, 0)) for y in years]
+    assert sum(n) == 641, sum(n)
+
+    data_js = json.dumps({"years": years, "n": n}, ensure_ascii=False)
+    return f"""
+<div class="panel">
+  <h2>『인도철학』 연도별 논문 발행수</h2>
+  <div class="panel-bar">
+    <div class="ctl"><span class="ctl-label">구간</span>
+      <span class="seg" id="seg-binw">
+        <button data-v="4" class="on">4년</button><button data-v="5">5년</button><button data-v="0">없음</button>
+      </span></div>
+    <div class="ctl"><span class="ctl-label">기간</span>
+      <span class="seg" id="seg-range">
+        <button data-v="all" class="on">전체</button><button data-v="2000">2000년~</button><button data-v="recent">최근 10년</button>
+      </span></div>
+    <div class="dl">
+      <button id="dl-png">PNG 저장</button><button id="dl-svg">SVG 저장</button>
+    </div>
+  </div>
+  <div id="chart-overview"></div>
+  <div class="panel-foot">자료:
+    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a></div>
+</div>
+
+<script>
+(function () {{
+  const D = {data_js};
+  const INK = "{INK}", MUTED = "{MUTED}", GRID = "{GRID}", BARBG = "{BARBG}";
+  const gd = document.getElementById("chart-overview");
+  let binw = 4, range = "all";
+
+  function bins(w) {{
+    const out = [];
+    for (let b0 = 1989; b0 <= 2026; b0 += w) {{
+      const b1 = Math.min(b0 + w - 1, 2026);
+      const span = D.n.slice(b0 - 1989, b1 - 1989 + 1);
+      const avg = Math.round(span.reduce((a, c) => a + c, 0) / span.length * 10) / 10;
+      out.push({{ b0, b1, avg }});
+    }}
+    return out;
+  }}
+
+  function xrange() {{
+    if (range === "2000") return [1999.2, 2026.8];
+    if (range === "recent") return [2016.2, 2026.8];
+    return [1988.2, 2026.8];
+  }}
+
+  function render() {{
+    const traces = [];
+    const xr = xrange();
+    if (binw > 0) {{
+      const B = bins(binw);
+      traces.push({{
+        type: "bar",
+        x: B.map(b => (b.b0 + b.b1) / 2),
+        y: B.map(b => b.avg),
+        width: B.map(b => b.b1 - b.b0 + 0.8),
+        marker: {{ color: BARBG, line: {{ width: 0 }} }},
+        text: B.map(b => {{
+          const c = (b.b0 + b.b1) / 2;
+          return (c >= xr[0] && c <= xr[1]) ? String(b.avg) : "";
+        }}),
+        textposition: "inside", insidetextanchor: "start", textangle: 0,
+        constraintext: "none",
+        textfont: {{ color: MUTED, size: 11 }},
+        customdata: B.map(b => b.b0 + "–" + b.b1),
+        hovertemplate: "%{{customdata}} 연평균 %{{y}}편<extra></extra>",
+        name: binw + "년 구간 연평균",
+      }});
+    }}
+    traces.push({{
+      type: "scatter", mode: "lines",
+      x: D.years, y: D.n,
+      line: {{ color: INK, width: 2 }},
+      hovertemplate: "%{{x}}년 · %{{y}}편<extra></extra>",
+      name: "연도별 발행 편수",
+    }});
+    const layout = {{
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
+      margin: {{ l: 40, r: 16, t: 8, b: 36 }}, height: 420,
+      hovermode: "x unified",
+      hoverlabel: {{ bgcolor: "#FFFFFF", bordercolor: GRID, font: {{ color: INK }} }},
+      showlegend: binw > 0,
+      legend: {{ orientation: "h", yanchor: "bottom", y: 1.02, x: 0,
+               font: {{ size: 13, color: MUTED }} }},
+      bargap: 0,
+      xaxis: {{ showgrid: false, zeroline: false, dtick: 5, range: xr,
+              tickfont: {{ color: MUTED }} }},
+      yaxis: {{ gridcolor: GRID, zeroline: false, rangemode: "tozero",
+              tickfont: {{ color: MUTED }} }},
+      annotations: [{{ x: 1990.2, y: 16.5, text: "휴간 1990–91", showarrow: false,
+                     xanchor: "left", yanchor: "bottom",
+                     font: {{ color: MUTED, size: 12 }} }}],
+    }};
+    Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
+  }}
+
+  function segWire(id, fn) {{
+    const seg = document.getElementById(id);
+    seg.addEventListener("click", e => {{
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      seg.querySelectorAll("button").forEach(b => b.classList.toggle("on", b === btn));
+      fn(btn.dataset.v);
+      render();
+    }});
+  }}
+  segWire("seg-binw", v => {{ binw = parseInt(v, 10); }});
+  segWire("seg-range", v => {{ range = v; }});
+
+  async function capture(fmt) {{
+    await Plotly.relayout(gd, {{ paper_bgcolor: "#FFFFFF", plot_bgcolor: "#FFFFFF" }});
+    try {{
+      await Plotly.downloadImage(gd, {{
+        format: fmt, width: 960, height: 420,
+        scale: fmt === "png" ? 4 : 1,
+        filename: "인도철학_연도별_발행수",
+      }});
+    }} finally {{
+      await Plotly.relayout(gd, {{ paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" }});
+    }}
+  }}
+  document.getElementById("dl-png").addEventListener("click", () => capture("png"));
+  document.getElementById("dl-svg").addEventListener("click", () => capture("svg"));
+
+  render();
+}})();
+</script>
+"""
+
+
+PENDING = '<div class="panel"><div class="pending">그래프 준비 중</div></div>'
+
+
+def main() -> None:
     DOCS.mkdir(exist_ok=True)
-    (DOCS / "index.html").write_text(html, encoding="utf-8")
-    print(f"docs/index.html 생성 ({len(html):,}자)")
+    contents = {
+        "index.html": (overview_chart(), True),
+        "core-authors.html": (PENDING, False),
+        "department.html": (PENDING, False),
+        "commitment.html": (PENDING, False),
+    }
+    for slug, title in PAGES:
+        body, needs_plotly = contents[slug]
+        html = page(slug, title, body, plotly=needs_plotly)
+        (DOCS / slug).write_text(html, encoding="utf-8")
+        print(f"docs/{slug} 생성 ({len(html):,}자)")
 
 
 if __name__ == "__main__":
-    build_index()
+    main()
