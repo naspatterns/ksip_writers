@@ -116,11 +116,11 @@
     const pAuth = 100 * A_S / TOT_A, pPap = 100 * W_S / TOT_W, pCore = 100 * nCoreS / nCore;
 
     const traces = [], annos = [];
-    function seg(y, x0, w, color, grp, hover, legendName) {
+    function seg(y, x0, w, color, legendName) {
       traces.push({ type: "bar", orientation: "h", y: [y], x: [w], base: [x0],
-        width: H, name: legendName || "", showlegend: !!legendName, meta: grp,
+        width: H, name: legendName || "", showlegend: !!legendName,
         marker: { color: color, line: { color: "#FFFFFF", width: 1.4 } },
-        hovertemplate: hover + "<extra></extra>" });
+        hoverinfo: "none" });
     }
     function inLabel(y, cx, text, white, size) {
       annos.push({ x: cx, y: y, yref: "y", text: text, showarrow: false,
@@ -128,19 +128,19 @@
     }
 
     // ── 막대 1: 전체 필진 ──
-    seg(YS[0], 0, pAuth, GOLD, "s", "전체 필진 · 인철과 학맥 " + A_S + "명", "인철과 학맥 출신");
-    seg(YS[0], pAuth, 100 - pAuth, GREY, "o", "전체 필진 · 그 외 " + (TOT_A - A_S) + "명", "그 외");
+    seg(YS[0], 0, pAuth, GOLD, "인철과 학맥 출신");        // t0
+    seg(YS[0], pAuth, 100 - pAuth, GREY, "그 외");          // t1
     inLabel(YS[0], pAuth / 2, "<b>" + Math.round(pAuth) + "% · " + A_S + "명</b>", true);
     inLabel(YS[0], pAuth + (100 - pAuth) / 2, Math.round(100 - pAuth) + "% · " + (TOT_A - A_S) + "명", false);
 
     // ── 막대 2: 발표 논문 (짙은 칸 = 핵심 필진의 몫) ──
     let left = 0;
-    [[gCore, GOLD, "핵심 몫 " + gCore + "편", true, "s"],
-     [gOnce, GOLD_P, "일회성 " + gOnce + "편", false, "s"],
-     [oCore, GREY_D, "핵심 몫 " + oCore + "편", true, "o"],
-     [oOnce, GREY, "일회성 " + oOnce + "편", false, "o"]].forEach(([cnt, col, lab, white, grp], i) => {
+    [[gCore, GOLD, "핵심 몫 " + gCore + "편", true],        // t2
+     [gOnce, GOLD_P, "일회성 " + gOnce + "편", false],       // t3
+     [oCore, GREY_D, "핵심 몫 " + oCore + "편", true],       // t4
+     [oOnce, GREY, "일회성 " + oOnce + "편", false]].forEach(([cnt, col, lab, white], i) => {
       const w = 100 * cnt / TOT_W;
-      seg(YS[1], left, w, col, grp, (grp === "s" ? "인철과 학맥 · " : "그 외 · ") + lab);
+      seg(YS[1], left, w, col);
       if (w >= 9) {
         inLabel(YS[1], left + w / 2, white ? "<b>" + lab + "</b>" : lab, white, 12);
       } else if (cnt > 0) {                       // 좁은 칸 → 바깥 리더
@@ -166,8 +166,8 @@
     });
 
     // ── 막대 3: 핵심 필진 ──
-    seg(YS[2], 0, pCore, GOLD, "s", "핵심 필진 · 인철과 학맥 " + nCoreS + "명");
-    seg(YS[2], pCore, 100 - pCore, GREY, "o", "핵심 필진 · 그 외 " + (nCore - nCoreS) + "명");
+    seg(YS[2], 0, pCore, GOLD);                             // t6
+    seg(YS[2], pCore, 100 - pCore, GREY);                   // t7
     inLabel(YS[2], pCore / 2, "<b>" + Math.round(pCore) + "% · " + nCoreS + "명</b>", true);
     inLabel(YS[2], pCore + (100 - pCore) / 2, Math.round(100 - pCore) + "% · " + (nCore - nCoreS) + "명", false);
 
@@ -198,16 +198,21 @@
     ribbonIdx = shapes.length - 1;
   }
 
-  // ── 호버 연동: 같은 출신(학맥/그 외)을 세 막대에서 함께 강조 ──
+  // ── 호버 연동: 조각 단위 — 그 필진이 쓴 논문 칸(역방향: 그 논문을 쓴 필진 조각)을 강조 ──
+  // t0 필진·학맥  t1 필진·그외 | t2 논문·학맥핵심몫 t3 논문·학맥일회성 t4 논문·그외핵심몫 t5 논문·그외일회성 | t6 핵심·학맥 t7 핵심·그외
+  const REL = { 0: [0, 2, 3], 1: [1, 4, 5], 2: [2, 0, 6], 3: [3, 0],
+               4: [4, 1, 7], 5: [5, 1], 6: [6, 2], 7: [7, 4] };
+  const RIBBON_ON = [0, 2, 3];             // 리본(필진 학맥→논문 학맥)과 연관된 조각
   let nTraces = 0, ribbonIdx = -1, hl;
-  function setHighlight(grp) {
-    if (hl === grp) return;
-    hl = grp;
+  function setHighlight(idx) {
+    if (hl === idx) return;
+    hl = idx;
+    const rel = idx == null ? null : REL[idx] || [idx];
     const ops = [];
-    for (let i = 0; i < nTraces; i++) ops.push(grp == null || gd.data[i].meta === grp ? 1 : 0.25);
+    for (let i = 0; i < nTraces; i++) ops.push(rel === null || rel.includes(i) ? 1 : 0.22);
     Plotly.restyle(gd, { opacity: ops });
     Plotly.relayout(gd, { ["shapes[" + ribbonIdx + "].fillcolor"]:
-      grp === "o" ? "rgba(184,145,31,0.04)" : "rgba(184,145,31,0.13)" });
+      (idx == null || RIBBON_ON.includes(idx)) ? "rgba(184,145,31,0.13)" : "rgba(184,145,31,0.04)" });
   }
 
   document.getElementById("seg-comp-n").addEventListener("click", e => {
@@ -234,7 +239,7 @@
   document.getElementById("dl-comp-svg").addEventListener("click", () => { setHighlight(null); capture("svg"); });
 
   render();
-  gd.on("plotly_hover", ev => setHighlight(ev.points[0].data.meta));
+  gd.on("plotly_hover", ev => setHighlight(ev.points[0].curveNumber));
   gd.on("plotly_unhover", () => setHighlight(null));
 })();
 </script>
