@@ -2,14 +2,26 @@
 """data/를 읽어 GitHub Pages용 정적 대시보드(docs/)를 생성한다.
 
 구성: 상단 제목 배너 + 왼쪽 섹션 탭 + 콘텐츠.
-페이지: index.html(개관) · core-authors.html(핵심 필진) ·
-        department.html(인도철학과) · commitment.html(헌신성)
+페이지·차트 (11개, 논문 그림과 동일 구성):
+  index.html(개관)             — overview_chart(연도별 발행수)
+  core-authors.html(핵심 필진) — asymmetry_chart(필자·논문 비대칭) · top_authors_chart(상위 필자)
+                               · activity_chart(활동 필자) · stockflow_chart(유입·이탈)
+  department.html(인도철학과)  — dept_composition_chart(출신 3막대·조각 호버 연동)
+                               · dept_share_chart(비중 추이 3선) · dept_flow_chart(발산 막대)
+  commitment.html(헌신성)      — debut_chart(데뷔 코호트) · kci_activity_chart(KCI 활동·게재)
+                               · devotion_chart(평균 헌신도)
 
 차트 공통 규격:
-  - 조절 변수 1–2개 (버튼 그룹)
+  - 조절 변수 1–2개 (버튼 그룹) — 데이터를 페이지에 임베드해 JS 실시간 재계산
+    · 공용 임베드: KSIP_AY(주저자별 연도) · KSIP_AS(+학맥 여부) · KSIP_KCI(핵심 70명 KCI 출판)
   - 캡처 버튼: PNG(4배율, 흰 배경) + SVG — 사용자가 조절한 현재 상태 그대로 저장
-  - 그래프 아래 원본 데이터 링크(GitHub 파일 페이지)
+  - 그래프 아래 원본 데이터 링크(GitHub 파일 페이지, 새 탭) — 설명과 줄바꿈 분리
   - 해석적 설명 없음. 범례·각주는 의미 왜곡을 막는 최소한만.
+  - 웹폰트 로드 후 재렌더링(document.fonts.ready) — 한글 범례 겹침 방지
+  - 잠정 구간(마지막 bin)은 빗금·점선·빈 마커, 구간 눈금은 "1989–92" 형식
+
+검증: 각 차트의 기본값(4년·3편) 수치는 graph/ 폴더의 논문 그림 스크립트가
+가진 assert 검증값과 대조를 마쳤다 (커밋 이력 참조).
 
 사용법:
     python3 scripts/build_dashboard.py
