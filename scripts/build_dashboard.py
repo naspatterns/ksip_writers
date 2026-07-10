@@ -314,6 +314,7 @@ def overview_chart() -> str:
   document.getElementById("dl-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  if (document.fonts) document.fonts.ready.then(render);
 }})();
 </script>
 """
@@ -474,6 +475,7 @@ def asymmetry_chart() -> str:
   document.getElementById("dl-asym-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  if (document.fonts) document.fonts.ready.then(render);
 }})();
 </script>
 """
@@ -575,6 +577,7 @@ def top_authors_chart() -> str:
   document.getElementById("dl-top-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  if (document.fonts) document.fonts.ready.then(render);
 }})();
 </script>
 """
@@ -719,7 +722,7 @@ def activity_chart() -> str:
       barmode: "stack", bargap: 0.3,
       paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
       font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
-      margin: {{ l: 56, r: 56, t: 30, b: 40 }}, height: 460,
+      margin: {{ l: 56, r: 56, t: 56, b: 40 }}, height: 460,
       legend: {{ orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
                traceorder: "normal", font: {{ size: 13, color: MUTED }} }},
       xaxis: {{ tickfont: {{ color: INK, size: 12 }}, fixedrange: true }},
@@ -764,6 +767,7 @@ def activity_chart() -> str:
   document.getElementById("dl-act-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  if (document.fonts) document.fonts.ready.then(render);
 }})();
 </script>
 """
@@ -887,7 +891,7 @@ def stockflow_chart() -> str:
       barmode: "stack", bargap: 0.3,
       paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
       font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
-      margin: {{ l: 56, r: 56, t: 30, b: 40 }}, height: 460,
+      margin: {{ l: 56, r: 56, t: 56, b: 40 }}, height: 460,
       legend: {{ orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
                traceorder: "normal", font: {{ size: 13, color: MUTED }} }},
       xaxis: {{ tickfont: {{ color: INK, size: 12 }}, fixedrange: true }},
@@ -932,6 +936,7 @@ def stockflow_chart() -> str:
   document.getElementById("dl-sf-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  if (document.fonts) document.fonts.ready.then(render);
 }})();
 </script>
 """
@@ -1147,6 +1152,7 @@ def dept_composition_chart() -> str:
   document.getElementById("dl-comp-svg").addEventListener("click", () => {{ setHighlight(null); capture("svg"); }});
 
   render();
+  if (document.fonts) document.fonts.ready.then(render);
   gd.on("plotly_hover", ev => setHighlight(ev.points[0].curveNumber));
   gd.on("plotly_unhover", () => setHighlight(null));
 }})();
@@ -1262,7 +1268,7 @@ def dept_share_chart() -> str:
     const layout = {{
       paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
       font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
-      margin: {{ l: 56, r: 20, t: 30, b: 40 }}, height: 440,
+      margin: {{ l: 56, r: 20, t: 56, b: 40 }}, height: 440,
       legend: {{ orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
                traceorder: "normal", font: {{ size: 12.5, color: MUTED }} }},
       xaxis: {{ tickfont: {{ color: INK, size: 12 }}, fixedrange: true }},
@@ -1304,6 +1310,7 @@ def dept_share_chart() -> str:
   document.getElementById("dl-sh-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  if (document.fonts) document.fonts.ready.then(render);
 }})();
 </script>
 """
@@ -1414,7 +1421,7 @@ def dept_flow_chart() -> str:
       barmode: "relative", bargap: 0.3,
       paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
       font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
-      margin: {{ l: 56, r: 20, t: 30, b: 40 }}, height: 440,
+      margin: {{ l: 56, r: 20, t: 56, b: 40 }}, height: 440,
       legend: {{ orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
                traceorder: "normal", font: {{ size: 13, color: MUTED }} }},
       xaxis: {{ tickfont: {{ color: INK, size: 12 }}, fixedrange: true }},
@@ -1457,6 +1464,7 @@ def dept_flow_chart() -> str:
   document.getElementById("dl-fl-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  if (document.fonts) document.fonts.ready.then(render);
 }})();
 </script>
 """
@@ -1596,7 +1604,7 @@ def debut_chart() -> str:
       barmode: "stack", bargap: 0.3,
       paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
       font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
-      margin: {{ l: 56, r: 20, t: 30, b: 40 }}, height: 420,
+      margin: {{ l: 56, r: 20, t: 56, b: 40 }}, height: 420,
       legend: {{ orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
                traceorder: "normal", font: {{ size: 13, color: MUTED }} }},
       xaxis: {{ tickfont: {{ color: INK, size: 12 }}, fixedrange: true }},
@@ -1641,6 +1649,7 @@ def debut_chart() -> str:
   document.getElementById("dl-db-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  if (document.fonts) document.fonts.ready.then(render);
 }})();
 </script>
 """
@@ -1757,7 +1766,7 @@ def kci_activity_chart() -> str:
     const layout = {{
       paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
       font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
-      margin: {{ l: 56, r: 20, t: 30, b: 40 }}, height: 440,
+      margin: {{ l: 56, r: 20, t: 56, b: 40 }}, height: 440,
       legend: {{ orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
                traceorder: "normal", font: {{ size: 12.5, color: MUTED }} }},
       xaxis: {{ tickfont: {{ color: INK, size: 12 }}, fixedrange: true }},
@@ -1803,6 +1812,7 @@ def kci_activity_chart() -> str:
   document.getElementById("dl-ka-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  if (document.fonts) document.fonts.ready.then(render);
 }})();
 </script>
 """
@@ -1948,6 +1958,7 @@ def devotion_chart() -> str:
   document.getElementById("dl-dv-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  if (document.fonts) document.fonts.ready.then(render);
 }})();
 </script>
 """

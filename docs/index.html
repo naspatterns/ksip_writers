@@ -248,6 +248,7 @@
   document.getElementById("dl-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  if (document.fonts) document.fonts.ready.then(render);
 })();
 </script>
 

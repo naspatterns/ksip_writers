@@ -212,6 +212,7 @@
   document.getElementById("dl-asym-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  if (document.fonts) document.fonts.ready.then(render);
 })();
 </script>
 
@@ -293,6 +294,7 @@
   document.getElementById("dl-top-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  if (document.fonts) document.fonts.ready.then(render);
 })();
 </script>
 
@@ -410,7 +412,7 @@
       barmode: "stack", bargap: 0.3,
       paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
       font: { family: "'Noto Sans KR', sans-serif", color: INK, size: 14 },
-      margin: { l: 56, r: 56, t: 30, b: 40 }, height: 460,
+      margin: { l: 56, r: 56, t: 56, b: 40 }, height: 460,
       legend: { orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
                traceorder: "normal", font: { size: 13, color: MUTED } },
       xaxis: { tickfont: { color: INK, size: 12 }, fixedrange: true },
@@ -455,6 +457,7 @@
   document.getElementById("dl-act-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  if (document.fonts) document.fonts.ready.then(render);
 })();
 </script>
 
@@ -572,7 +575,7 @@
       barmode: "stack", bargap: 0.3,
       paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
       font: { family: "'Noto Sans KR', sans-serif", color: INK, size: 14 },
-      margin: { l: 56, r: 56, t: 30, b: 40 }, height: 460,
+      margin: { l: 56, r: 56, t: 56, b: 40 }, height: 460,
       legend: { orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
                traceorder: "normal", font: { size: 13, color: MUTED } },
       xaxis: { tickfont: { color: INK, size: 12 }, fixedrange: true },
@@ -617,6 +620,7 @@
   document.getElementById("dl-sf-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  if (document.fonts) document.fonts.ready.then(render);
 })();
 </script>
 
