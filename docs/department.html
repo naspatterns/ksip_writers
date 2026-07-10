@@ -116,11 +116,11 @@
     const pAuth = 100 * A_S / TOT_A, pPap = 100 * W_S / TOT_W, pCore = 100 * nCoreS / nCore;
 
     const traces = [], annos = [];
-    function seg(y, x0, w, color, name, show) {
+    function seg(y, x0, w, color, grp, hover, legendName) {
       traces.push({ type: "bar", orientation: "h", y: [y], x: [w], base: [x0],
-        width: H, name: name || "", showlegend: !!show,
+        width: H, name: legendName || "", showlegend: !!legendName, meta: grp,
         marker: { color: color, line: { color: "#FFFFFF", width: 1.4 } },
-        hovertemplate: name ? name + "<extra></extra>" : "<extra></extra>", hoverinfo: name ? undefined : "skip" });
+        hovertemplate: hover + "<extra></extra>" });
     }
     function inLabel(y, cx, text, white, size) {
       annos.push({ x: cx, y: y, yref: "y", text: text, showarrow: false,
@@ -128,19 +128,19 @@
     }
 
     // ── 막대 1: 전체 필진 ──
-    seg(YS[0], 0, pAuth, GOLD, "인철과 학맥 출신", true);
-    seg(YS[0], pAuth, 100 - pAuth, GREY, "그 외", true);
+    seg(YS[0], 0, pAuth, GOLD, "s", "전체 필진 · 인철과 학맥 " + A_S + "명", "인철과 학맥 출신");
+    seg(YS[0], pAuth, 100 - pAuth, GREY, "o", "전체 필진 · 그 외 " + (TOT_A - A_S) + "명", "그 외");
     inLabel(YS[0], pAuth / 2, "<b>" + Math.round(pAuth) + "% · " + A_S + "명</b>", true);
     inLabel(YS[0], pAuth + (100 - pAuth) / 2, Math.round(100 - pAuth) + "% · " + (TOT_A - A_S) + "명", false);
 
     // ── 막대 2: 발표 논문 (짙은 칸 = 핵심 필진의 몫) ──
     let left = 0;
-    [[gCore, GOLD, "핵심 몫 " + gCore + "편", true],
-     [gOnce, GOLD_P, "일회성 " + gOnce + "편", false],
-     [oCore, GREY_D, "핵심 몫 " + oCore + "편", true],
-     [oOnce, GREY, "일회성 " + oOnce + "편", false]].forEach(([cnt, col, lab, white], i) => {
+    [[gCore, GOLD, "핵심 몫 " + gCore + "편", true, "s"],
+     [gOnce, GOLD_P, "일회성 " + gOnce + "편", false, "s"],
+     [oCore, GREY_D, "핵심 몫 " + oCore + "편", true, "o"],
+     [oOnce, GREY, "일회성 " + oOnce + "편", false, "o"]].forEach(([cnt, col, lab, white, grp], i) => {
       const w = 100 * cnt / TOT_W;
-      seg(YS[1], left, w, col, lab);
+      seg(YS[1], left, w, col, grp, (grp === "s" ? "인철과 학맥 · " : "그 외 · ") + lab);
       if (w >= 9) {
         inLabel(YS[1], left + w / 2, white ? "<b>" + lab + "</b>" : lab, white, 12);
       } else if (cnt > 0) {                       // 좁은 칸 → 바깥 리더
@@ -166,8 +166,8 @@
     });
 
     // ── 막대 3: 핵심 필진 ──
-    seg(YS[2], 0, pCore, GOLD);
-    seg(YS[2], pCore, 100 - pCore, GREY);
+    seg(YS[2], 0, pCore, GOLD, "s", "핵심 필진 · 인철과 학맥 " + nCoreS + "명");
+    seg(YS[2], pCore, 100 - pCore, GREY, "o", "핵심 필진 · 그 외 " + (nCore - nCoreS) + "명");
     inLabel(YS[2], pCore / 2, "<b>" + Math.round(pCore) + "% · " + nCoreS + "명</b>", true);
     inLabel(YS[2], pCore + (100 - pCore) / 2, Math.round(100 - pCore) + "% · " + (nCore - nCoreS) + "명", false);
 
@@ -194,6 +194,20 @@
       hoverlabel: { bgcolor: "#FFFFFF", bordercolor: GRID, font: { color: INK } },
     };
     Plotly.react(gd, traces, layout, { displayModeBar: false, responsive: true });
+    nTraces = traces.length;
+    ribbonIdx = shapes.length - 1;
+  }
+
+  // ── 호버 연동: 같은 출신(학맥/그 외)을 세 막대에서 함께 강조 ──
+  let nTraces = 0, ribbonIdx = -1, hl;
+  function setHighlight(grp) {
+    if (hl === grp) return;
+    hl = grp;
+    const ops = [];
+    for (let i = 0; i < nTraces; i++) ops.push(grp == null || gd.data[i].meta === grp ? 1 : 0.25);
+    Plotly.restyle(gd, { opacity: ops });
+    Plotly.relayout(gd, { ["shapes[" + ribbonIdx + "].fillcolor"]:
+      grp === "o" ? "rgba(184,145,31,0.04)" : "rgba(184,145,31,0.13)" });
   }
 
   document.getElementById("seg-comp-n").addEventListener("click", e => {
@@ -216,13 +230,311 @@
       await Plotly.relayout(gd, { paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" });
     }
   }
-  document.getElementById("dl-comp-png").addEventListener("click", () => capture("png"));
-  document.getElementById("dl-comp-svg").addEventListener("click", () => capture("svg"));
+  document.getElementById("dl-comp-png").addEventListener("click", () => { setHighlight(null); capture("png"); });
+  document.getElementById("dl-comp-svg").addEventListener("click", () => { setHighlight(null); capture("svg"); });
+
+  render();
+  gd.on("plotly_hover", ev => setHighlight(ev.points[0].data.meta));
+  gd.on("plotly_unhover", () => setHighlight(null));
+})();
+</script>
+
+<div class="panel">
+  <h2>핵심 필진의 논문 비중 추이</h2>
+  <div class="panel-bar">
+    <div class="ctl"><span class="ctl-label">구간</span>
+      <span class="seg" id="seg-sh-w">
+        <button data-v="4" class="on">4년</button><button data-v="5">5년</button>
+      </span></div>
+    <div class="ctl"><span class="ctl-label">핵심 기준</span>
+      <span class="seg" id="seg-sh-n">
+        <button data-v="2">2편</button><button data-v="3" class="on">3편</button><button data-v="4">4편</button><button data-v="5">5편</button>
+      </span></div>
+    <div class="dl">
+      <button id="dl-sh-png">PNG 저장</button><button id="dl-sh-svg">SVG 저장</button>
+    </div>
+  </div>
+  <div id="chart-sh"></div>
+  <div class="panel-foot">주저자 기준 · 동명이인 분리 ·
+    비중 = 그 구간 핵심 논문 ÷ 그 구간 전체 논문 ·
+    <span id="sh-def">핵심 = 그 구간까지 누적 3편 이상</span> ·
+    마지막 구간은 진행 중(잠정) — 자료:
+    <a href="https://github.com/naspatterns/ksip_writers/blob/main/data/processed/papers.csv">papers.csv</a> ·
+    <a href="https://github.com/naspatterns/ksip_writers/blob/main/data/processed/authors.csv">authors.csv</a> ·
+    <a href="https://github.com/naspatterns/ksip_writers/blob/main/data/raw/dongguk_indophil_theses.csv">dongguk_indophil_theses.csv</a></div>
+</div>
+
+<script>
+(function () {
+  const AS = KSIP_AS;
+  const INK = "#1C1B19", MUTED = "#6E675C", GOLD = "#B8911F", GRID = "#E4E2DA";
+  const GREY_TOT = "#B8B4A8";
+  const Y0 = 1989, Y1 = 2026;
+  const gd = document.getElementById("chart-sh");
+  let W = 4, N = 3;
+
+  function compute() {
+    const nbin = Math.floor((Y1 - Y0) / W) + 1;
+    const bin = y => Math.min(Math.floor((y - Y0) / W), nbin - 1);
+    const labels = [];
+    for (let i = 0; i < nbin; i++) {
+      const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
+      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+    }
+    const tot = Array(nbin).fill(0), gp = Array(nbin).fill(0), rp = Array(nbin).fill(0);
+    let nG = 0, nR = 0;
+    AS.forEach(d => {
+      if (d.y.length >= N) { d.s ? nG++ : nR++; }
+      const cnt = Array(nbin).fill(0);
+      d.y.forEach(y => cnt[bin(y)]++);
+      let cum = 0;
+      for (let b = 0; b < nbin; b++) {
+        cum += cnt[b];
+        tot[b] += cnt[b];
+        if (cum >= N) (d.s ? gp : rp)[b] += cnt[b];
+      }
+    });
+    return { nbin, labels,
+      gpct: gp.map((v, b) => tot[b] ? Math.round(100 * v / tot[b]) : 0),
+      rpct: rp.map((v, b) => tot[b] ? Math.round(100 * v / tot[b]) : 0),
+      tpct: gp.map((v, b) => tot[b] ? Math.round(100 * (v + rp[b]) / tot[b]) : 0),
+      nG, nR };
+  }
+
+  function lineTraces(xs, vals, prov, color, sym, name, width, msize) {
+    return [
+      { type: "scatter", mode: "lines+markers", x: xs.slice(0, prov), y: vals.slice(0, prov),
+        name: name, line: { color: color, width: width },
+        marker: { size: msize, symbol: sym, color: color, line: { color: "#FFFFFF", width: 1.1 } },
+        hovertemplate: "%{x} · " + name + " %{y}%<extra></extra>" },
+      { type: "scatter", mode: "lines+markers", x: xs.slice(prov - 1), y: vals.slice(prov - 1),
+        showlegend: false, line: { color: color, width: width, dash: "dot" },
+        marker: { size: msize, symbol: sym, color: ["rgba(0,0,0,0)", "#FFFFFF"],
+                 line: { color: color, width: 1.2 } },
+        hovertemplate: "%{x} · " + name + " %{y}%<extra></extra>" },
+    ];
+  }
+
+  function render() {
+    const C = compute();
+    const prov = C.nbin - 1, xs = C.labels;
+    const traces = [
+      ...lineTraces(xs, C.tpct, prov, GREY_TOT, "circle", "핵심 필진 전체", 1.8, 5),
+      ...lineTraces(xs, C.gpct, prov, GOLD, "circle", "인철과 출신 핵심 (" + C.nG + "명)", 2.2, 7),
+      ...lineTraces(xs, C.rpct, prov, INK, "square", "비인철과 출신 핵심 (" + C.nR + "명)", 2.2, 7),
+    ];
+    const annos = [];
+    for (let i = 1; i < C.nbin; i++) {
+      annos.push({ x: xs[i], y: C.gpct[i], yref: "y", yshift: 11, text: "<b>" + C.gpct[i] + "%</b>",
+        showarrow: false, bgcolor: "rgba(255,255,255,0.85)", borderpad: 1,
+        font: { color: GOLD, size: 10.5 } });
+      annos.push({ x: xs[i], y: C.rpct[i], yref: "y", yshift: C.rpct[i] >= 16 ? -12 : 12,
+        text: "<b>" + C.rpct[i] + "%</b>", showarrow: false,
+        bgcolor: "rgba(255,255,255,0.85)", borderpad: 1,
+        font: { color: INK, size: 10.5 } });
+      if (C.rpct[i] > 2) {
+        annos.push({ x: xs[i], y: C.tpct[i], yref: "y",
+          yshift: (C.tpct[i] - C.gpct[i]) >= 10 ? 10 : 15,
+          text: C.tpct[i] + "%", showarrow: false,
+          bgcolor: "rgba(255,255,255,0.85)", borderpad: 1,
+          font: { color: "#8A867B", size: 10 } });
+      }
+    }
+    const layout = {
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: { family: "'Noto Sans KR', sans-serif", color: INK, size: 14 },
+      margin: { l: 56, r: 20, t: 30, b: 40 }, height: 440,
+      legend: { orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
+               traceorder: "normal", font: { size: 12.5, color: MUTED } },
+      xaxis: { tickfont: { color: INK, size: 12 }, fixedrange: true },
+      yaxis: { range: [0, 100], tickvals: [0, 20, 40, 60, 80, 100],
+              title: { text: "전체 논문 중 비중 (%)", font: { color: MUTED, size: 12 } },
+              gridcolor: GRID, tickfont: { color: MUTED }, fixedrange: true },
+      annotations: annos,
+      hoverlabel: { bgcolor: "#FFFFFF", bordercolor: GRID, font: { color: INK } },
+    };
+    document.getElementById("sh-def").textContent = "핵심 = 그 구간까지 누적 " + N + "편 이상";
+    Plotly.react(gd, traces, layout, { displayModeBar: false, responsive: true });
+  }
+
+  function segWire(id, fn) {
+    document.getElementById(id).addEventListener("click", e => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      document.querySelectorAll("#" + id + " button").forEach(b => b.classList.toggle("on", b === btn));
+      fn(parseInt(btn.dataset.v, 10));
+      render();
+    });
+  }
+  segWire("seg-sh-w", v => { W = v; });
+  segWire("seg-sh-n", v => { N = v; });
+
+  async function capture(fmt) {
+    await Plotly.relayout(gd, { paper_bgcolor: "#FFFFFF", plot_bgcolor: "#FFFFFF" });
+    try {
+      await Plotly.downloadImage(gd, {
+        format: fmt, width: 960, height: 440,
+        scale: fmt === "png" ? 4 : 1,
+        filename: "인도철학_핵심논문_비중추이",
+      });
+    } finally {
+      await Plotly.relayout(gd, { paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" });
+    }
+  }
+  document.getElementById("dl-sh-png").addEventListener("click", () => capture("png"));
+  document.getElementById("dl-sh-svg").addEventListener("click", () => capture("svg"));
 
   render();
 })();
 </script>
-<div class="panel"><div class="pending">그래프 준비 중</div></div>
+
+<div class="panel">
+  <h2>핵심 필진의 시기별 유입·이탈</h2>
+  <div class="panel-bar">
+    <div class="ctl"><span class="ctl-label">구간</span>
+      <span class="seg" id="seg-fl-w">
+        <button data-v="4" class="on">4년</button><button data-v="5">5년</button>
+      </span></div>
+    <div class="ctl"><span class="ctl-label">핵심 기준</span>
+      <span class="seg" id="seg-fl-n">
+        <button data-v="2">2편</button><button data-v="3" class="on">3편</button><button data-v="4">4편</button><button data-v="5">5편</button>
+      </span></div>
+    <div class="dl">
+      <button id="dl-fl-png">PNG 저장</button><button id="dl-fl-svg">SVG 저장</button>
+    </div>
+  </div>
+  <div id="chart-fl"></div>
+  <div class="panel-foot">주저자 기준 · 동명이인 분리 ·
+    <span id="fl-def">유입 = 3편째 게재</span> · 이탈 = 마지막 게재 후 미게재 ·
+    마지막 구간은 진행 중(잠정) — 자료:
+    <a href="https://github.com/naspatterns/ksip_writers/blob/main/data/processed/papers.csv">papers.csv</a> ·
+    <a href="https://github.com/naspatterns/ksip_writers/blob/main/data/processed/authors.csv">authors.csv</a> ·
+    <a href="https://github.com/naspatterns/ksip_writers/blob/main/data/raw/dongguk_indophil_theses.csv">dongguk_indophil_theses.csv</a></div>
+</div>
+
+<script>
+(function () {
+  const AS = KSIP_AS;
+  const INK = "#1C1B19", MUTED = "#6E675C", GOLD = "#B8911F", GRID = "#E4E2DA";
+  const GREY_D = "#A8A294";
+  const Y0 = 1989, Y1 = 2026;
+  const gd = document.getElementById("chart-fl");
+  let W = 4, N = 3;
+
+  function compute() {
+    const nbin = Math.floor((Y1 - Y0) / W) + 1;
+    const bin = y => Math.min(Math.floor((y - Y0) / W), nbin - 1);
+    const labels = [];
+    for (let i = 0; i < nbin; i++) {
+      const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
+      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+    }
+    const z = () => Array(nbin).fill(0);
+    const entG = z(), entR = z(), exiG = z(), exiR = z();
+    AS.forEach(d => {
+      if (d.y.length < N) return;
+      (d.s ? entG : entR)[bin(d.y[N - 1])]++;
+      (d.s ? exiG : exiR)[bin(d.y[d.y.length - 1])]++;
+    });
+    const shift = a => [0].concat(a.slice(0, -1));   // 이탈 = 마지막 게재 다음 구간
+    const xg = shift(exiG), xr = shift(exiR);
+    const net = entG.map((v, b) => v + entR[b] - xg[b] - xr[b]);
+    return { nbin, labels, entG, entR, exiG: xg, exiR: xr, net };
+  }
+
+  function render() {
+    const C = compute();
+    const prov = C.nbin - 1, xs = C.labels;
+    const provOp = i => i === prov ? 0.5 : 1;
+    const pat = { shape: xs.map((_, i) => i === prov ? "/" : ""),
+                 fillmode: "overlay", fgcolor: "#FFFFFF", size: 5, solidity: 0.4 };
+    const bar = (vals, color, name, show, side) => ({
+      type: "bar", x: xs, y: vals, name: name, showlegend: !!show, width: 0.7,
+      marker: { color: color, opacity: xs.map((_, i) => provOp(i)), pattern: pat,
+               line: { color: "#FFFFFF", width: 0.8 } },
+      hovertemplate: "%{x} · " + name + " " + side + " %{customdata}명<extra></extra>",
+      customdata: vals.map(v => Math.abs(v)),
+    });
+    const traces = [
+      bar(C.entG, GOLD, "인철과 학맥", true, "유입"),
+      bar(C.entR, GREY_D, "그 외", true, "유입"),
+      bar(C.exiG.map(v => -v), GOLD, "인철과 학맥", false, "이탈"),
+      bar(C.exiR.map(v => -v), GREY_D, "그 외", false, "이탈"),
+      // 증감 선
+      { type: "scatter", mode: "lines+markers", x: xs.slice(0, prov), y: C.net.slice(0, prov),
+        name: "증감", line: { color: INK, width: 2 },
+        marker: { size: 6.5, symbol: "diamond", color: INK, line: { color: "#FFFFFF", width: 1.1 } },
+        hovertemplate: "%{x} · 증감 %{y}명<extra></extra>" },
+      { type: "scatter", mode: "lines+markers", x: xs.slice(prov - 1), y: C.net.slice(prov - 1),
+        showlegend: false, line: { color: INK, width: 2, dash: "dot" },
+        marker: { size: 6.5, symbol: "diamond", color: ["rgba(0,0,0,0)", "#FFFFFF"],
+                 line: { color: INK, width: 1.2 } },
+        hovertemplate: "%{x} · 증감 %{y}명<extra></extra>" },
+    ];
+    const annos = [];
+    for (let i = 0; i < C.nbin; i++) {
+      const up = C.entG[i] + C.entR[i], dn = C.exiG[i] + C.exiR[i];
+      if (up > 0) annos.push({ x: xs[i], y: up, yref: "y", yshift: 9, text: String(up),
+        showarrow: false, font: { color: MUTED, size: 10.5 } });
+      if (dn > 0) annos.push({ x: xs[i], y: -dn, yref: "y", yshift: -9, text: String(dn),
+        showarrow: false, font: { color: MUTED, size: 10.5 } });
+      annos.push({ x: xs[i], y: C.net[i], yref: "y", xshift: 13,
+        text: "<b>" + (C.net[i] > 0 ? "+" : "") + C.net[i] + "</b>", showarrow: false,
+        bgcolor: "rgba(255,255,255,0.9)", borderpad: 1,
+        font: { color: INK, size: 10 } });
+    }
+    const hi = Math.max.apply(null, C.entG.map((v, b) => v + C.entR[b]));
+    const lo = Math.max.apply(null, C.exiG.map((v, b) => v + C.exiR[b]));
+    const layout = {
+      barmode: "relative", bargap: 0.3,
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: { family: "'Noto Sans KR', sans-serif", color: INK, size: 14 },
+      margin: { l: 56, r: 20, t: 30, b: 40 }, height: 440,
+      legend: { orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
+               traceorder: "normal", font: { size: 13, color: MUTED } },
+      xaxis: { tickfont: { color: INK, size: 12 }, fixedrange: true },
+      yaxis: { range: [-(lo * 1.25 + 2), hi * 1.25 + 2],
+              title: { text: "유입(+) · 이탈(−) (명)", font: { color: MUTED, size: 12 } },
+              gridcolor: GRID, zeroline: true, zerolinecolor: MUTED, zerolinewidth: 1,
+              tickfont: { color: MUTED }, fixedrange: true },
+      annotations: annos,
+      hoverlabel: { bgcolor: "#FFFFFF", bordercolor: GRID, font: { color: INK } },
+    };
+    document.getElementById("fl-def").textContent = "유입 = " + N + "편째 게재";
+    Plotly.react(gd, traces, layout, { displayModeBar: false, responsive: true });
+  }
+
+  function segWire(id, fn) {
+    document.getElementById(id).addEventListener("click", e => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      document.querySelectorAll("#" + id + " button").forEach(b => b.classList.toggle("on", b === btn));
+      fn(parseInt(btn.dataset.v, 10));
+      render();
+    });
+  }
+  segWire("seg-fl-w", v => { W = v; });
+  segWire("seg-fl-n", v => { N = v; });
+
+  async function capture(fmt) {
+    await Plotly.relayout(gd, { paper_bgcolor: "#FFFFFF", plot_bgcolor: "#FFFFFF" });
+    try {
+      await Plotly.downloadImage(gd, {
+        format: fmt, width: 960, height: 440,
+        scale: fmt === "png" ? 4 : 1,
+        filename: "인도철학_핵심필진_유입이탈_출신별",
+      });
+    } finally {
+      await Plotly.relayout(gd, { paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" });
+    }
+  }
+  document.getElementById("dl-fl-png").addEventListener("click", () => capture("png"));
+  document.getElementById("dl-fl-svg").addEventListener("click", () => capture("svg"));
+
+  render();
+})();
+</script>
+
     </main>
   </div>
   <footer>자료: KCI(한국학술지인용색인) · 동국대학교 dCollection —
