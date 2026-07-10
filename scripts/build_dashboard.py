@@ -543,12 +543,16 @@ def _author_years() -> list[list[int]]:
     return [sorted(int(y) for y in g) for _, g in jp.groupby("주저자")["발행연도"]]
 
 
+def ay_script() -> str:
+    """주저자별 발행연도 목록을 페이지 전역(KSIP_AY)으로 1회 임베드."""
+    ay = _author_years()
+    assert len(ay) == 207 and sum(len(a) for a in ay) == 641
+    return f"<script>const KSIP_AY = {json.dumps(ay)};</script>"
+
+
 def activity_chart() -> str:
     """핵심 필진 ③: 시기별 활동 필자 수 + 핵심 논문 점유율.
     변수 = 구간 폭(4/5년), 핵심 기준(누적 2/3/4/5편)."""
-    ay = _author_years()
-    assert len(ay) == 207 and sum(len(a) for a in ay) == 641
-    ay_js = json.dumps(ay)
     return f"""
 <div class="panel">
   <h2>시기별 활동 필자 수</h2>
@@ -573,7 +577,7 @@ def activity_chart() -> str:
 
 <script>
 (function () {{
-  const AY = {ay_js};                      // 주저자별 발행연도 목록
+  const AY = KSIP_AY;                      // 주저자별 발행연도 목록 (공용 임베드)
   const INK = "{INK}", MUTED = "{MUTED}", GOLD = "{GOLD}", GRID = "{GRID}";
   const GRAY = "#CDC7B8";
   const Y0 = 1989, Y1 = 2026;
@@ -714,6 +718,174 @@ def activity_chart() -> str:
 """
 
 
+def stockflow_chart() -> str:
+    """핵심 필진 ④: 시기별 핵심 필진 수와 유입·이탈.
+    변수 = 구간 폭(4/5년), 핵심 기준(누적 2/3/4/5편)."""
+    return f"""
+<div class="panel">
+  <h2>시기별 핵심 필진 수와 유입·이탈</h2>
+  <div class="panel-bar">
+    <div class="ctl"><span class="ctl-label">구간</span>
+      <span class="seg" id="seg-sf-w">
+        <button data-v="4" class="on">4년</button><button data-v="5">5년</button>
+      </span></div>
+    <div class="ctl"><span class="ctl-label">핵심 기준</span>
+      <span class="seg" id="seg-sf-n">
+        <button data-v="2">2편</button><button data-v="3" class="on">3편</button><button data-v="4">4편</button><button data-v="5">5편</button>
+      </span></div>
+    <div class="dl">
+      <button id="dl-sf-png">PNG 저장</button><button id="dl-sf-svg">SVG 저장</button>
+    </div>
+  </div>
+  <div id="chart-sf"></div>
+  <div class="panel-foot">주저자 기준 · 동명이인 분리 ·
+    <span id="sf-def">유입 = 3편째 게재</span> · 이탈 = 마지막 게재 후 미게재 ·
+    마지막 구간은 진행 중(잠정) — 자료:
+    <a href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
+    <a href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a></div>
+</div>
+
+<script>
+(function () {{
+  const AY = KSIP_AY;
+  const INK = "{INK}", MUTED = "{MUTED}", GOLD = "{GOLD}", GRID = "{GRID}";
+  const GRAY = "#CDC7B8", RUST = "#9E4A2E";
+  const Y0 = 1989, Y1 = 2026;
+  const gd = document.getElementById("chart-sf");
+  let W = 4, N = 3;
+
+  function compute() {{
+    const nbin = Math.floor((Y1 - Y0) / W) + 1;
+    const bin = y => Math.min(Math.floor((y - Y0) / W), nbin - 1);
+    const labels = [];
+    for (let i = 0; i < nbin; i++) {{
+      const b0 = Y0 + i * W, b1 = Math.min(b0 + W - 1, Y1);
+      labels.push(String(b0 % 100).padStart(2, "0") + "–" + String(b1 % 100).padStart(2, "0"));
+    }}
+    const core = Array(nbin).fill(0), total = Array(nbin).fill(0);
+    const ent = Array(nbin).fill(0), exi = Array(nbin).fill(0);
+    AY.forEach(years => {{
+      const cnt = Array(nbin).fill(0);
+      years.forEach(y => cnt[bin(y)]++);
+      let cum = 0;
+      for (let b = 0; b < nbin; b++) {{
+        cum += cnt[b];
+        if (cnt[b] > 0) {{
+          total[b]++;
+          if (cum >= N) core[b]++;
+        }}
+      }}
+      if (years.length >= N) {{
+        ent[bin(years[N - 1])]++;                     // 유입 = N편째 게재 구간
+        exi[bin(years[years.length - 1])]++;          // 마지막 게재 구간
+      }}
+    }});
+    const exiShift = [0].concat(exi.slice(0, -1));    // 이탈 = 그다음 구간
+    return {{ nbin, labels, core, noncore: total.map((t, b) => t - core[b]),
+             total, ent, exi: exiShift }};
+  }}
+
+  function render() {{
+    const C = compute();
+    const prov = C.nbin - 1;
+    const xs = C.labels;
+    const provOp = i => i === prov ? 0.5 : 1;
+    const pat = {{ shape: xs.map((_, i) => i === prov ? "/" : ""),
+                 fillmode: "overlay", fgcolor: "#FFFFFF", size: 5, solidity: 0.4 }};
+
+    const traces = [
+      {{ type: "bar", x: xs, y: C.core, name: "핵심 · " + N + "편 이상", width: 0.7,
+        marker: {{ color: GOLD, opacity: xs.map((_, i) => provOp(i)), pattern: pat }},
+        hovertemplate: "%{{x}} · 핵심 %{{y}}명<extra></extra>" }},
+      {{ type: "bar", x: xs, y: C.noncore, name: "일회성 필진", width: 0.7,
+        marker: {{ color: GRAY, opacity: xs.map((_, i) => provOp(i)), pattern: pat }},
+        hovertemplate: "%{{x}} · 일회성 %{{y}}명<extra></extra>" }},
+    ];
+    [["유입", C.ent, INK, "circle"], ["이탈", C.exi, RUST, "square"]].forEach(([nm, vals, color, sym]) => {{
+      traces.push({{ type: "scatter", mode: "lines+markers",
+        x: xs.slice(0, prov), y: vals.slice(0, prov), yaxis: "y2", name: nm,
+        line: {{ color: color, width: 2.1 }},
+        marker: {{ size: 7, symbol: sym, color: color, line: {{ color: "#FFFFFF", width: 1.2 }} }},
+        hovertemplate: "%{{x}} · " + nm + " %{{y}}명<extra></extra>" }});
+      traces.push({{ type: "scatter", mode: "lines+markers",
+        x: xs.slice(prov - 1), y: vals.slice(prov - 1), yaxis: "y2", showlegend: false,
+        line: {{ color: color, width: 2.1, dash: "dot" }},
+        marker: {{ size: 7, symbol: sym, color: ["rgba(0,0,0,0)", "#FFFFFF"],
+                 line: {{ color: color, width: 1.3 }} }},
+        hovertemplate: "%{{x}} · " + nm + " %{{y}}명<extra></extra>" }});
+    }});
+
+    // 값 라벨 (흰 박스) — 유입 위 / 이탈 아래, 근접 시 좌우로 분리
+    const annos = [];
+    C.ent.forEach((e, i) => {{
+      const x2 = C.exi[i], close = Math.abs(e - x2) <= 1;
+      annos.push({{ x: xs[i], y: e, yref: "y2", yshift: 12, xshift: close ? -11 : 0,
+        text: "<b>" + e + "</b>", showarrow: false,
+        bgcolor: "rgba(255,255,255,0.92)", borderpad: 1,
+        font: {{ color: INK, size: 10.5 }} }});
+      annos.push({{ x: xs[i], y: x2, yref: "y2",
+        yshift: (close || x2 < 2) ? 12 : -13, xshift: close ? 11 : 0,
+        text: "<b>" + x2 + "</b>", showarrow: false,
+        bgcolor: "rgba(255,255,255,0.92)", borderpad: 1,
+        font: {{ color: RUST, size: 10.5 }} }});
+    }});
+
+    const yMax = Math.max.apply(null, C.total) * 1.15;
+    const y2Max = Math.max.apply(null, C.ent.concat(C.exi)) * 1.3 + 2;
+    const layout = {{
+      barmode: "stack", bargap: 0.3,
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
+      margin: {{ l: 56, r: 56, t: 30, b: 40 }}, height: 460,
+      legend: {{ orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
+               traceorder: "normal", font: {{ size: 13, color: MUTED }} }},
+      xaxis: {{ tickfont: {{ color: INK, size: 12 }}, fixedrange: true }},
+      yaxis: {{ range: [0, yMax],
+              title: {{ text: "활동 필자 수 (명)", font: {{ color: MUTED, size: 12 }} }},
+              gridcolor: GRID, tickfont: {{ color: MUTED }}, fixedrange: true }},
+      yaxis2: {{ range: [0, y2Max], overlaying: "y", side: "right",
+               title: {{ text: "핵심 유입·이탈 (명)", font: {{ color: MUTED, size: 12 }} }},
+               showgrid: false, tickfont: {{ color: MUTED }}, fixedrange: true }},
+      annotations: annos,
+      hoverlabel: {{ bgcolor: "#FFFFFF", bordercolor: GRID, font: {{ color: INK }} }},
+    }};
+    document.getElementById("sf-def").textContent = "유입 = " + N + "편째 게재";
+    Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
+  }}
+
+  function segWire(id, fn) {{
+    document.getElementById(id).addEventListener("click", e => {{
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      document.querySelectorAll("#" + id + " button").forEach(b => b.classList.toggle("on", b === btn));
+      fn(parseInt(btn.dataset.v, 10));
+      render();
+    }});
+  }}
+  segWire("seg-sf-w", v => {{ W = v; }});
+  segWire("seg-sf-n", v => {{ N = v; }});
+
+  async function capture(fmt) {{
+    await Plotly.relayout(gd, {{ paper_bgcolor: "#FFFFFF", plot_bgcolor: "#FFFFFF" }});
+    try {{
+      await Plotly.downloadImage(gd, {{
+        format: fmt, width: 960, height: 460,
+        scale: fmt === "png" ? 4 : 1,
+        filename: "인도철학_핵심필진_유입이탈",
+      }});
+    }} finally {{
+      await Plotly.relayout(gd, {{ paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" }});
+    }}
+  }}
+  document.getElementById("dl-sf-png").addEventListener("click", () => capture("png"));
+  document.getElementById("dl-sf-svg").addEventListener("click", () => capture("svg"));
+
+  render();
+}})();
+</script>
+"""
+
+
 PENDING = '<div class="panel"><div class="pending">그래프 준비 중</div></div>'
 
 
@@ -721,8 +893,8 @@ def main() -> None:
     DOCS.mkdir(exist_ok=True)
     contents = {
         "index.html": (overview_chart(), True),
-        "core-authors.html": (asymmetry_chart() + top_authors_chart()
-                              + activity_chart() + PENDING, True),
+        "core-authors.html": (ay_script() + asymmetry_chart() + top_authors_chart()
+                              + activity_chart() + stockflow_chart(), True),
         "department.html": (PENDING, False),
         "commitment.html": (PENDING, False),
     }
