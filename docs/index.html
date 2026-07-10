@@ -90,7 +90,8 @@
     </div>
   </div>
   <div id="chart-overview"></div>
-  <div class="panel-foot">연평균 = 표시 기간 평균(휴간 1990–91·미완 2026 제외) — 자료:
+  <div class="panel-foot">발행 주기: 연 1회(1989–2003, 2002만 2회) · 연 2회(2004–09) · 연 3회(2010~) ·
+    연평균 = 표시 기간 평균(휴간 1990–91·미완 2026 제외) — 자료:
     <a href="https://github.com/naspatterns/ksip_writers/blob/main/data/processed/papers.csv">papers.csv</a></div>
 </div>
 
@@ -144,14 +145,6 @@
         name: binw + "년 구간 연평균",
       });
     }
-    traces.push({
-      type: "scatter", mode: "lines",
-      x: D.years, y: D.n,
-      line: { color: INK, width: 2 },
-      hovertemplate: "%{x}년 · %{y}편<extra></extra>",
-      name: "연도별 발행 편수",
-    });
-
     // ── 기간 연평균 (휴간·미완 2026 제외) ──
     let sum = 0, cnt = 0;
     for (let y = Math.max(1989, y0); y <= Math.min(2026, y1); y++) {
@@ -160,12 +153,26 @@
     }
     const avg = cnt ? sum / cnt : 0;
 
+    // 평균선: 막대 위·연도선 아래 (트레이스 순서로 z 제어)
+    traces.push({
+      type: "scatter", mode: "lines",
+      x: [xr[0], xr[1]], y: [avg, avg],
+      line: { color: INK, width: 1, dash: "dot" }, opacity: 0.55,
+      hoverinfo: "skip", showlegend: false,
+    });
+    traces.push({
+      type: "scatter", mode: "lines",
+      x: D.years, y: D.n,
+      line: { color: INK, width: 2 },
+      hovertemplate: "%{x}년 · %{y}편<extra></extra>",
+      name: "연도별 발행 편수",
+    });
+
     // ── x축 눈금: 구간 선택 시 구간 연도, 없음 시 매년 ──
     let tickvals, ticktext, tickangle = 0;
     if (binw > 0) {
       tickvals = B.map(b => (b.b0 + b.b1) / 2);
-      ticktext = B.map(b => String(b.b0 % 100).padStart(2, "0") + "–"
-                          + String(b.b1 % 100).padStart(2, "0"));
+      ticktext = B.map(b => b.b0 + "–" + String(b.b1 % 100).padStart(2, "0"));
     } else {
       tickvals = D.years.filter(y => y >= y0 && y <= y1);
       ticktext = tickvals.map(String);
@@ -177,10 +184,6 @@
       { type: "rect", x0: 1989.5, x1: 1991.5, y0: 0, y1: 1,
         xref: "x", yref: "paper", fillcolor: "rgba(205,199,184,0.3)",
         line: { width: 0 }, layer: "below" },
-      // 기간 연평균선 (점선)
-      { type: "line", x0: xr[0], x1: xr[1], y0: avg, y1: avg,
-        xref: "x", yref: "y", layer: "below",
-        line: { color: INK, width: 1, dash: "dot" }, opacity: 0.55 },
     ];
     const annos = [
       { x: xr[1] - 0.3, y: avg, xref: "x", yref: "y",
