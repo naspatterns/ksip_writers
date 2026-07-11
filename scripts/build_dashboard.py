@@ -1698,7 +1698,9 @@ def _core_kci() -> list[dict]:
 
 
 def commit_data_script() -> str:
-    return (f"<script>const KSIP_AY = {json.dumps(_author_years())};"
+    names, ay = _author_years(with_names=True)
+    return (f"<script>const KSIP_AY = {json.dumps(ay)};"
+            f"const KSIP_AN = {json.dumps(names, ensure_ascii=False)};"
             f"const KSIP_KCI = {json.dumps(_core_kci())};</script>")
 
 
@@ -1721,6 +1723,7 @@ def debut_chart() -> str:
     </div>
   </div>
   <div id="chart-db"></div>
+  <div id="db-names" class="names-box"></div>
   <div class="panel-foot">주저자 기준 · 동명이인 분리 · 데뷔 = 첫 게재 ·
     <span id="db-def">일회성 = 평생 3편 미만</span> ·
     마지막 두 코호트는 관찰 기간이 짧음(잠정) <br>자료:
@@ -1731,11 +1734,12 @@ def debut_chart() -> str:
 <script>
 (function () {{
   const AY = KSIP_AY;
+  const AN = KSIP_AN;                      // KSIP_AY와 같은 순서의 표시용 이름
   const INK = "{INK}", MUTED = "{MUTED}", GRID = "{GRID}";
   const MID = "#A8A294", LITE = "#D8D5CC";
   const Y0 = 1989, Y1 = 2026;
   const gd = document.getElementById("chart-db");
-  let W = 4, N = 3;
+  let W = 4, N = 3, lastC = null;
 
   function compute() {{
     const nbin = Math.floor((Y1 - Y0) / W) + 1;
@@ -1746,19 +1750,22 @@ def debut_chart() -> str:
       labels.push(b0 + "–" + String(b1 % 100).padStart(2, "0"));
     }}
     const c1 = Array(nbin).fill(0), cm = Array(nbin).fill(0), cn = Array(nbin).fill(0);
-    AY.forEach(years => {{
+    const oneNm = Array.from({{ length: nbin }}, () => []);   // 코호트별 일회성(N편 미만) 필자
+    AY.forEach((years, ai) => {{
       const bd = bin(years[0]);
       cn[bd]++;
       if (years.length === 1) c1[bd]++;
       else if (years.length < N) cm[bd]++;
+      if (years.length < N) oneNm[bd].push(AN[ai]);
     }});
     const one = c1.map((v, i) => cn[i] ? Math.round(100 * v / cn[i]) : 0);
     const tot = c1.map((v, i) => cn[i] ? Math.round(100 * (v + cm[i]) / cn[i]) : 0);
-    return {{ nbin, labels, one, two: tot.map((t, i) => t - one[i]), tot, cn }};
+    return {{ nbin, labels, one, two: tot.map((t, i) => t - one[i]), tot, cn, oneNm }};
   }}
 
   function render() {{
     const C = compute();
+    lastC = C;
     const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
     const prov = C.nbin - 2, xs = C.labels;            // 마지막 두 코호트 = 잠정
     const pat = i => i >= prov ? "/" : "";
@@ -1779,7 +1786,8 @@ def debut_chart() -> str:
         marker: {{ size: 7, color: INK, line: {{ color: "#FFFFFF", width: 1.3 }} }},
         hovertemplate: "%{{x}} · 일회성 %{{y}}%<extra></extra>" }},
       {{ type: "scatter", mode: "lines+markers", x: xs.slice(prov - 1), y: C.tot.slice(prov - 1),
-        showlegend: false, line: {{ color: INK, width: 2, dash: "dot" }},
+        name: "일회성(" + N + "편 미만) 비율", showlegend: false,
+        line: {{ color: INK, width: 2, dash: "dot" }},
         marker: {{ size: 7, color: xs.slice(prov - 1).map((_, k) => k === 0 ? INK : "#FFFFFF"),
                  line: {{ color: INK, width: 1.3 }} }},
         hovertemplate: "%{{x}} · 일회성 %{{y}}%<extra></extra>" }});
@@ -1806,6 +1814,30 @@ def debut_chart() -> str:
     }};
     document.getElementById("db-def").textContent = "일회성 = 평생 " + N + "편 미만";
     Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
+    resetNames();
+  }}
+
+  const box = document.getElementById("db-names");
+  const HINT = '<span class="nb-hint"><b>꼭지점</b>(일회성 비율)에 마우스를 올리면 '
+    + '그 코호트의 일회성 필자 이름이 여기에 나열됩니다.</span>';
+  function resetNames() {{ box.innerHTML = HINT; }}
+  function showNames(bi) {{
+    if (!lastC) return;
+    const names = lastC.oneNm[bi].slice().sort((a, b) => a.localeCompare(b, "ko"));
+    box.innerHTML =
+      '<div class="nb-head"><b>' + lastC.labels[bi] + '</b> · 일회성(' + N + '편 미만) · '
+      + names.length + '명 <span class="nb-hint">(데뷔 ' + lastC.cn[bi] + '명 중)</span></div>'
+      + '<div class="nb-names">' + (names.join(", ") || "없음") + '</div>';
+  }}
+  function wireHover() {{
+    gd.on("plotly_hover", function (ev) {{
+      const pt = ev.points && ev.points[0];
+      if (!pt || !lastC) return;
+      const nm = (pt.data && pt.data.name) || "";
+      if (nm.indexOf("일회성") !== 0) return;
+      const bi = lastC.labels.indexOf(pt.x);
+      if (bi >= 0) showNames(bi);
+    }});
   }}
 
   function segWire(id, fn) {{
@@ -1836,6 +1868,7 @@ def debut_chart() -> str:
   document.getElementById("dl-db-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  wireHover();
   if (document.fonts) document.fonts.ready.then(render);
 }})();
 </script>
