@@ -674,8 +674,9 @@ def top_authors_chart() -> str:
 """
 
 
-def _author_years() -> list[list[int]]:
-    """주저자(동명이인 분리)별 발행연도 목록 — 시계열 차트들의 공통 입력."""
+def _author_years(with_names: bool = False):
+    """주저자(동명이인 분리)별 발행연도 목록 — 시계열 차트들의 공통 입력.
+    with_names=True면 (표시용 이름 목록, 연도 목록) 쌍을 같은 순서로 반환."""
     papers = pd.read_parquet(ROOT / "data" / "processed" / "papers.parquet")
     authors = pd.read_parquet(ROOT / "data" / "processed" / "authors.parquet")
     papers["주저자"] = papers["논문 ID"].map(
@@ -685,14 +686,21 @@ def _author_years() -> list[list[int]]:
                                 for a in papers.loc[ks, "주저자 소속기관"].fillna("")]
     papers.loc[papers["주저자"] == "김미숙", "주저자"] = "김미숙#자이나"
     jp = papers[papers["발행연도"].notna() & papers["주저자"].notna()]
-    return [sorted(int(y) for y in g) for _, g in jp.groupby("주저자")["발행연도"]]
+    groups = jp.groupby("주저자")["발행연도"]
+    years = [sorted(int(y) for y in g) for _, g in groups]
+    if not with_names:
+        return years
+    names = [f"{p.split('#')[0]}({p.split('#')[1]})" if "#" in p else p
+             for p, _ in groups]
+    return names, years
 
 
 def ay_script() -> str:
-    """주저자별 발행연도 목록을 페이지 전역(KSIP_AY)으로 1회 임베드."""
-    ay = _author_years()
+    """주저자별 발행연도 목록(KSIP_AY) + 표시용 이름(KSIP_AN)을 페이지 전역으로 1회 임베드."""
+    names, ay = _author_years(with_names=True)
     assert len(ay) == 207 and sum(len(a) for a in ay) == 641
-    return f"<script>const KSIP_AY = {json.dumps(ay)};</script>"
+    return (f"<script>const KSIP_AY = {json.dumps(ay)};"
+            f"const KSIP_AN = {json.dumps(names, ensure_ascii=False)};</script>")
 
 
 def activity_chart() -> str:
@@ -885,6 +893,7 @@ def stockflow_chart() -> str:
     </div>
   </div>
   <div id="chart-sf"></div>
+  <div id="sf-names" class="names-box"></div>
   <div class="panel-foot">주저자 기준 · 동명이인 분리 ·
     <span id="sf-def">유입 = 해당 구간 3편째 게재</span> · 이탈 = 이전 구간 마지막 게재 후 미게재 ·
     마지막 구간은 진행 중(잠정) <br>자료:
@@ -898,8 +907,9 @@ def stockflow_chart() -> str:
   const INK = "{INK}", MUTED = "{MUTED}", GOLD = "{GOLD}", GRID = "{GRID}";
   const GRAY = "#CDC7B8", RUST = "#9E4A2E";
   const Y0 = 1989, Y1 = 2026;
+  const AN = KSIP_AN;                      // KSIP_AY와 같은 순서의 표시용 이름
   const gd = document.getElementById("chart-sf");
-  let W = 4, N = 3;
+  let W = 4, N = 3, lastC = null;
 
   function compute() {{
     const nbin = Math.floor((Y1 - Y0) / W) + 1;
@@ -911,7 +921,9 @@ def stockflow_chart() -> str:
     }}
     const core = Array(nbin).fill(0), total = Array(nbin).fill(0);
     const ent = Array(nbin).fill(0), exi = Array(nbin).fill(0);
-    AY.forEach(years => {{
+    const entNm = Array.from({{ length: nbin }}, () => []);
+    const exiNm = Array.from({{ length: nbin }}, () => []);
+    AY.forEach((years, ai) => {{
       const cnt = Array(nbin).fill(0);
       years.forEach(y => cnt[bin(y)]++);
       let cum = 0;
@@ -923,17 +935,20 @@ def stockflow_chart() -> str:
         }}
       }}
       if (years.length >= N) {{
-        ent[bin(years[N - 1])]++;                     // 유입 = N편째 게재 구간
-        exi[bin(years[years.length - 1])]++;          // 마지막 게재 구간
+        const eb = bin(years[N - 1]), xb = bin(years[years.length - 1]);
+        ent[eb]++; entNm[eb].push(AN[ai]);            // 유입 = N편째 게재 구간
+        exi[xb]++; exiNm[xb].push(AN[ai]);            // 마지막 게재 구간
       }}
     }});
     const exiShift = [0].concat(exi.slice(0, -1));    // 이탈 = 그다음 구간
+    const exiNmShift = [[]].concat(exiNm.slice(0, -1));
     return {{ nbin, labels, core, noncore: total.map((t, b) => t - core[b]),
-             total, ent, exi: exiShift }};
+             total, ent, exi: exiShift, entNm, exiNm: exiNmShift }};
   }}
 
   function render() {{
     const C = compute();
+    lastC = C;
     const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
     const prov = C.nbin - 1;
     const xs = C.labels;
@@ -956,7 +971,8 @@ def stockflow_chart() -> str:
         marker: {{ size: 7, symbol: sym, color: color, line: {{ color: "#FFFFFF", width: 1.2 }} }},
         hovertemplate: "%{{x}} · " + nm + " %{{y}}명<extra></extra>" }});
       traces.push({{ type: "scatter", mode: "lines+markers",
-        x: xs.slice(prov - 1), y: vals.slice(prov - 1), yaxis: "y2", showlegend: false,
+        x: xs.slice(prov - 1), y: vals.slice(prov - 1), yaxis: "y2",
+        name: nm, showlegend: false,
         line: {{ color: color, width: 2.1, dash: "dot" }},
         marker: {{ size: 7, symbol: sym, color: ["rgba(0,0,0,0)", "#FFFFFF"],
                  line: {{ color: color, width: 1.3 }} }},
@@ -999,6 +1015,32 @@ def stockflow_chart() -> str:
     }};
     document.getElementById("sf-def").textContent = "유입 = 해당 구간 " + N + "편째 게재";
     Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
+    resetNames();
+  }}
+
+  const box = document.getElementById("sf-names");
+  const HINT = '<span class="nb-hint"><b>유입</b>·<b style="color:' + RUST + '">이탈</b> '
+    + '꼭지점에 마우스를 올리면 그 수치에 집계된 필자 이름이 여기에 나열됩니다.</span>';
+  function resetNames() {{ box.innerHTML = HINT; }}
+  function showNames(kind, bi) {{
+    if (!lastC) return;
+    const names = (kind === "유입" ? lastC.entNm[bi] : lastC.exiNm[bi]).slice()
+      .sort((a, b) => a.localeCompare(b, "ko"));
+    const color = kind === "유입" ? INK : RUST;
+    box.innerHTML =
+      '<div class="nb-head"><b>' + lastC.labels[bi] + '</b> · <span style="color:' + color
+      + '">' + kind + '</span> · ' + names.length + '명</div>'
+      + '<div class="nb-names">' + (names.join(", ") || "없음") + '</div>';
+  }}
+  function wireHover() {{
+    gd.on("plotly_hover", function (ev) {{
+      const pt = ev.points && ev.points[0];
+      if (!pt || !lastC) return;
+      const nm = (pt.data && pt.data.name) || "";
+      if (nm !== "유입" && nm !== "이탈") return;
+      const bi = lastC.labels.indexOf(pt.x);
+      if (bi >= 0) showNames(nm, bi);
+    }});
   }}
 
   function segWire(id, fn) {{
@@ -1029,6 +1071,7 @@ def stockflow_chart() -> str:
   document.getElementById("dl-sf-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  wireHover();
   if (document.fonts) document.fonts.ready.then(render);
 }})();
 </script>
