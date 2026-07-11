@@ -1981,7 +1981,8 @@ def kci_activity_chart() -> str:
       for (let s = 1; s <= steps; s++) {{ bx.push(xs[i]); by.push(C.indo[i] + g * s / (steps + 1)); }}
     }}
     traces.push({{ type: "scatter", mode: "markers", x: bx, y: by, name: "__band__",
-      showlegend: false, hoverinfo: "none", marker: {{ size: 18, color: "rgba(0,0,0,0)" }} }});
+      showlegend: false, hoverinfo: "none",
+      marker: {{ size: 18, color: "rgba(0,0,0,0)", opacity: 0, line: {{ width: 0 }} }} }});
     // 금색 꼭지점 호버 확대용 투명 핫스팟 — 검정 점과 가까울수록 작게(검정 점 호버 보존), 겹치면 크게(리스트는 동일)
     const pxPer = 344 / yMax;                     // 플롯 영역 높이(px) / y범위
     const hotSize = C.indo.map((v, i) => {{
@@ -1989,7 +1990,8 @@ def kci_activity_chart() -> str:
       return gapPx <= 0 ? 26 : Math.min(26, Math.max(8, 2 * gapPx - 6));
     }});
     traces.push({{ type: "scatter", mode: "markers", x: xs, y: C.indo, name: "__gold__",
-      showlegend: false, marker: {{ size: hotSize, color: "rgba(0,0,0,0)" }},
+      showlegend: false,
+      marker: {{ size: hotSize, color: "rgba(0,0,0,0)", opacity: 0, line: {{ width: 0 }} }},
       hovertemplate: "%{{x}} · 게재 %{{y}}명<extra></extra>" }});
     const annos = [];
     C.act.forEach((a, i) => {{
