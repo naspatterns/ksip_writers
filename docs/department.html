@@ -166,7 +166,7 @@
 
     // ── 막대 1: 전체 필진 ──
     seg(YS[0], 0, pAuth, GOLD, "인철과 출신");             // t0
-    seg(YS[0], pAuth, 100 - pAuth, GREY, "그 외");          // t1
+    seg(YS[0], pAuth, 100 - pAuth, GREY, "비인철과 출신");  // t1
     inLabel(YS[0], pAuth / 2, "<b>" + Math.round(pAuth) + "% · " + A_S + "명</b>", true);
     inLabel(YS[0], pAuth + (100 - pAuth) / 2, Math.round(100 - pAuth) + "% · " + (TOT_A - A_S) + "명", false);
 
@@ -189,11 +189,11 @@
       left += w;
     });
 
-    // 막대 2 아래 브래킷: 출신 합 / 그 외 합 (핵심 기준과 무관)
+    // 막대 2 아래 브래킷: 인철과 합 / 비인철과 합 (핵심 기준과 무관)
     const by = YS[1] - H / 2 - 0.14;
     const shapes = [];
     [[0, pPap, "인철과 출신 " + Math.round(pPap) + "% · " + W_S + "편"],
-     [pPap, 100, "그 외 " + Math.round(100 - pPap) + "% · " + (TOT_W - W_S) + "편"]].forEach(([x0, x1, lab]) => {
+     [pPap, 100, "비인철과 출신 " + Math.round(100 - pPap) + "% · " + (TOT_W - W_S) + "편"]].forEach(([x0, x1, lab]) => {
       shapes.push({ type: "path", layer: "above",
         path: "M " + (x0 + 0.4) + "," + (by + 0.09) + " L " + (x0 + 0.4) + "," + by
             + " L " + (x1 - 0.4) + "," + by + " L " + (x1 - 0.4) + "," + (by + 0.09),
@@ -236,7 +236,7 @@
   }
 
   // ── 호버 연동: 조각 단위 — 그 필진이 쓴 논문 칸(역방향: 그 논문을 쓴 필진 조각)을 강조 ──
-  // t0 필진·출신  t1 필진·그외 | t2 논문·출신핵심몫 t3 논문·출신일회성 t4 논문·그외핵심몫 t5 논문·그외일회성 | t6 핵심·출신 t7 핵심·그외
+  // t0 필진·인철과  t1 필진·비인철과 | t2 논문·인철과핵심몫 t3 논문·인철과일회성 t4 논문·비인철과핵심몫 t5 논문·비인철과일회성 | t6 핵심·인철과 t7 핵심·비인철과
   const REL = { 0: [0, 2, 3], 1: [1, 4, 5], 2: [2, 0, 6], 3: [3, 0],
                4: [4, 1, 7], 5: [5, 1], 6: [6, 2], 7: [7, 4] };
   const RIBBON_ON = [0, 2, 3];             // 리본(필진 출신→논문 출신)과 연관된 조각
@@ -556,9 +556,9 @@
     });
     const traces = [
       bar(C.entG, GOLD, "인철과 출신", true, "유입", "entG"),
-      bar(C.entR, GREY_D, "그 외", true, "유입", "entR"),
+      bar(C.entR, GREY_D, "비인철과 출신", true, "유입", "entR"),
       bar(C.exiG.map(v => -v), GOLD, "인철과 출신", false, "이탈", "exiG"),
-      bar(C.exiR.map(v => -v), GREY_D, "그 외", false, "이탈", "exiR"),
+      bar(C.exiR.map(v => -v), GREY_D, "비인철과 출신", false, "이탈", "exiR"),
       // 증감 선
       { type: "scatter", mode: "lines+markers", x: xs.slice(0, prov), y: C.net.slice(0, prov),
         name: "증감", line: { color: INK, width: 2 },
@@ -608,8 +608,8 @@
   const HINT = '<span class="nb-hint">막대의 각 조각에 마우스를 올리면 '
     + '그 조각에 집계된 필자 이름이 여기에 나열됩니다.</span>';
   function resetNames() { box.innerHTML = HINT; }
-  const KEYLAB = { entG: ["유입", "인철과 출신", GOLD], entR: ["유입", "그 외", MUTED],
-                  exiG: ["이탈", "인철과 출신", GOLD], exiR: ["이탈", "그 외", MUTED] };
+  const KEYLAB = { entG: ["유입", "인철과 출신", GOLD], entR: ["유입", "비인철과 출신", MUTED],
+                  exiG: ["이탈", "인철과 출신", GOLD], exiR: ["이탈", "비인철과 출신", MUTED] };
   function showNames(key, bi) {
     if (!lastC) return;
     const names = lastC.nm[key][bi].slice().sort((a, b) => a.localeCompare(b, "ko"));
