@@ -2,6 +2,8 @@
 """data/를 읽어 GitHub Pages용 정적 대시보드(docs/)를 생성한다.
 
 구성: 상단 제목 배너 + 왼쪽 섹션 탭 + 콘텐츠.
+디자인 "표지의 잔상": 표지 검정(--ink-deep) 배너·풋터 + 왼쪽 세로 골드 밴드(괘선 무늬)
+  + 흰 세리프 제목 + 영문 부제(뒤표지 타이포 인용). 차트·캡처는 불변(패널 흰 배경 유지).
 페이지·차트 (11개, 논문 그림과 동일 구성):
   index.html(개관)             — overview_chart(연도별 발행수)
   core-authors.html(핵심 필진) — asymmetry_chart(필자·논문 비대칭) · top_authors_chart(상위 필자)
@@ -42,6 +44,17 @@ MUTED = "#6E675C"
 GRID = "#E4E2DA"
 BARBG = "#EFE9DA"
 PAPER = "#FAF9F5"
+# 표지 파생 토큰 (표지 검정 / 밴드 상단 골드 / 밝은 배경 위 골드 텍스트 AA 대비용)
+INK_DEEP = "#131211"
+GOLD_SOFT = "#C89B24"
+GOLD_DEEP = "#8A6D17"
+
+# 배너 골드 밴드: 괘선(界線) 무늬(필사본 결의 추상화) + 골드 그라디언트 — 표지의 세로 밴드 인용
+RULED = ("repeating-linear-gradient(180deg, rgba(250,249,245,0) 0 9px, "
+         "rgba(250,249,245,.13) 9px 10px)")
+BAND_BG = f"{RULED}, linear-gradient(180deg, var(--gold-soft), var(--gold))"
+
+EN_LINE = "A DATA COMPANION TO THE KOREAN JOURNAL OF INDIAN PHILOSOPHY"
 
 PAGES = [
     ("index.html", "개관"),
@@ -51,62 +64,89 @@ PAGES = [
 ]
 
 CSS = f"""
-  :root {{ --ink:{INK}; --gold:{GOLD}; --muted:{MUTED}; --grid:{GRID}; --paper:{PAPER}; --barbg:{BARBG}; }}
+  :root {{ --ink:{INK}; --gold:{GOLD}; --muted:{MUTED}; --grid:{GRID}; --paper:{PAPER}; --barbg:{BARBG};
+          --ink-deep:{INK_DEEP}; --gold-soft:{GOLD_SOFT}; --gold-deep:{GOLD_DEEP}; }}
   * {{ box-sizing:border-box; margin:0; }}
   body {{ background:var(--paper); color:var(--ink); font-family:'Noto Sans KR',sans-serif;
          line-height:1.7; -webkit-font-smoothing:antialiased; }}
   a {{ color:var(--ink); }}
 
-  /* 상단 배너 */
-  .banner {{ border-bottom:1px solid var(--grid); padding:28px 32px 22px; }}
-  .banner .kicker {{ color:var(--gold); font-weight:700; letter-spacing:.14em; font-size:.75rem; }}
-  .banner h1 {{ font-family:'Noto Serif KR',serif; font-size:clamp(1.15rem,2.6vw,1.6rem); line-height:1.4; margin:.2em 0 .1em; }}
-  .banner .subtitle {{ color:var(--muted); font-size:.88rem; }}
+  /* 상단 배너 — 표지의 잔상: 다크 지면 + 왼쪽 골드 밴드(괘선 무늬) */
+  .banner {{ display:grid; grid-template-columns:clamp(64px,10vw,132px) 1fr;
+            background:var(--ink-deep); }}
+  .banner-band {{ background-image:{BAND_BG};
+                 border-right:1px solid rgba(228,226,218,.4); }}
+  .banner-text {{ padding:30px 34px 26px; }}
+  .banner .kicker {{ color:var(--gold-soft); font-weight:700; letter-spacing:.14em; font-size:.75rem; }}
+  .banner h1 {{ font-family:'Noto Serif KR',serif; font-size:clamp(1.15rem,2.6vw,1.6rem);
+               line-height:1.4; margin:.2em 0 .1em; color:var(--paper); }}
+  .banner .subtitle {{ color:rgba(250,249,245,.68); font-size:.88rem; }}
+  .banner .en {{ margin-top:12px; font-family:'Noto Serif KR',serif; font-weight:600;
+                font-size:.64rem; letter-spacing:.34em; color:rgba(250,249,245,.55); }}
 
   /* 좌측 탭 + 콘텐츠 */
   .frame {{ display:flex; min-height:calc(100vh - 110px); }}
   nav {{ width:172px; flex:none; padding:28px 0 28px 20px; }}
   nav a {{ display:block; padding:9px 14px; margin-bottom:2px; text-decoration:none; color:var(--muted);
-          border-left:2px solid transparent; font-size:.95rem; }}
+          border-left:3px solid transparent; font-size:.95rem; }}
   nav a:hover {{ color:var(--ink); }}
   nav a.on {{ color:var(--ink); font-weight:700; border-left-color:var(--gold); }}
   main {{ flex:1; min-width:0; padding:28px 32px 64px; max-width:1000px; }}
 
   /* 차트 패널 */
   .panel {{ background:#fff; border:1px solid var(--grid); border-radius:12px; padding:22px 24px; margin-bottom:28px; }}
-  .panel h2 {{ font-family:'Noto Serif KR',serif; font-size:1.12rem; margin-bottom:2px; }}
-  .panel-bar {{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 18px; margin:10px 0 4px; }}
+  .panel h2 {{ font-family:'Noto Serif KR',serif; font-size:1.12rem; margin-bottom:0; }}
+  .panel h2::after {{ content:""; display:block; width:26px; height:2px;
+                     background:var(--gold); margin:8px 0 2px; }}
+  .panel-bar {{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 18px; margin:8px 0 4px; }}
   .ctl {{ display:flex; align-items:center; gap:6px; }}
   .ctl-label {{ color:var(--muted); font-size:.8rem; }}
   .seg {{ display:inline-flex; border:1px solid var(--grid); border-radius:8px; overflow:hidden; }}
   .seg button {{ border:0; background:#fff; padding:4px 12px; font:inherit; font-size:.82rem;
                 color:var(--muted); cursor:pointer; }}
   .seg button + button {{ border-left:1px solid var(--grid); }}
-  .seg button.on {{ background:var(--barbg); color:var(--ink); font-weight:500; }}
+  .seg button.on {{ background:var(--barbg); color:var(--ink); font-weight:600;
+                   box-shadow:inset 0 -2px 0 var(--gold); }}
   .dl {{ margin-left:auto; display:flex; gap:6px; }}
   .dl button {{ border:1px solid var(--grid); border-radius:8px; background:#fff; padding:4px 12px;
                font:inherit; font-size:.82rem; color:var(--muted); cursor:pointer; }}
-  .dl button:hover {{ color:var(--ink); border-color:var(--muted); }}
+  .dl button:hover {{ color:var(--ink); border-color:var(--gold); }}
+  button:focus-visible {{ outline:2px solid var(--gold); outline-offset:2px; }}
   .panel-foot {{ margin-top:8px; color:var(--muted); font-size:.8rem; }}
   .panel-foot a {{ color:var(--muted); }}
   .names-box {{ margin-top:12px; padding:11px 14px; border:1px solid var(--grid);
-               border-radius:8px; background:var(--barbg); min-height:3.1em; font-size:.86rem; }}
+               border-radius:10px; background:var(--barbg); min-height:3.1em; font-size:.86rem; }}
   .names-box .nb-head {{ font-size:.8rem; margin-bottom:5px; }}
   .names-box .nb-names {{ color:var(--ink); line-height:1.75; }}
   .names-box .nb-hint {{ color:var(--muted); }}
   .pending {{ color:var(--muted); padding:48px 0; text-align:center; }}
 
-  footer {{ border-top:1px solid var(--grid); padding:20px 32px 40px; color:var(--muted); font-size:.82rem; }}
+  /* 풋터 — 뒤표지: 자료 출처가 다크 위에서 도드라짐 */
+  footer {{ background:var(--ink-deep); padding:26px 32px 46px;
+           color:rgba(250,249,245,.7); font-size:.82rem; }}
+  footer a {{ color:var(--gold-soft); }}
 
   @media (max-width: 760px) {{
+    .banner {{ grid-template-columns:1fr; }}
+    .banner-band {{ height:12px; border-right:none;
+                   border-bottom:1px solid rgba(228,226,218,.4); }}
+    .banner-text {{ padding:22px 16px 18px; }}
+    .banner .en {{ display:none; }}
     .frame {{ flex-direction:column; }}
     nav {{ width:auto; display:flex; padding:10px 16px 0; border-bottom:1px solid var(--grid); }}
     nav a {{ border-left:0; border-bottom:2px solid transparent; padding:8px 12px; }}
     nav a.on {{ border-bottom-color:var(--gold); }}
     main {{ padding:20px 16px 48px; }}
   }}
-"""
 
+  @media print {{
+    .banner, footer {{ background:#fff !important; color:var(--ink) !important; }}
+    .banner h1 {{ color:var(--ink); }}
+    .banner .subtitle {{ color:var(--muted); }}
+    .banner-band {{ display:none; }}
+    footer a {{ color:var(--ink); }}
+  }}
+"""
 
 # 가로 범례가 좁은 폭에서 줄바꿈 대신 오버플로우해 글자가 잘리는 문제를 막는 공용 헬퍼.
 # 각 차트의 한 줄 범례 폭을 실측해 필요한 줄 수를 구하고, 상단 여백을 늘려 Plotly가
@@ -171,9 +211,13 @@ def page(slug: str, title: str, content: str, *, plotly: bool = False) -> str:
 </head>
 <body>
   <div class="banner">
-    <div class="kicker">데이터로 읽는 학술지</div>
-    <h1>&lt;인도철학&gt;은 왜 점점 얇아지고 있는가?</h1>
-    <div class="subtitle">핵심 필진, 인도철학과, 그리고 헌신성으로 본 &lt;인도철학&gt; 필진 구성의 추이</div>
+    <div class="banner-band" aria-hidden="true"></div>
+    <div class="banner-text">
+      <div class="kicker">데이터로 읽는 학술지</div>
+      <h1>&lt;인도철학&gt;은 왜 점점 얇아지고 있는가?</h1>
+      <div class="subtitle">핵심 필진, 인도철학과, 그리고 헌신성으로 본 &lt;인도철학&gt; 필진 구성의 추이</div>
+      <div class="en">{EN_LINE}</div>
+    </div>
   </div>
   <div class="frame">
     <nav>
