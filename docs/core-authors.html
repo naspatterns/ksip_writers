@@ -157,8 +157,7 @@
         text: texts, textposition: "inside", insidetextanchor: "middle",
         textangle: 0,
         textfont: { color: seg.tcol, size: 13 },
-        customdata: ROWS.map(r => seg[r.key] + r.unit),
-        hovertemplate: seg.name + " · %{customdata} (%{x}%)<extra></extra>",
+        hoverinfo: "none",
       });
     });
 
@@ -186,6 +185,19 @@
       hoverlabel: { bgcolor: "#FFFFFF", bordercolor: "#E4E2DA", font: { color: INK } },
     };
     Plotly.react(gd, traces, layout, { displayModeBar: false, responsive: true });
+    nTraces = traces.length;
+  }
+
+  // ── 호버 연동: 같은 빈도 그룹(핵심/2편대/일회성)의 필자·논문 조각을 함께 강조 ──
+  let nTraces = 0, hl;
+  function setHighlight(idx) {
+    if (hl === idx) return;
+    hl = idx;
+    const ops = [];
+    for (let i = 0; i < nTraces; i++) ops.push(idx == null || i === idx ? 1 : 0.25);
+    Plotly.restyle(gd, { opacity: ops });
+    Plotly.relayout(gd, { "shapes[0].fillcolor":                 // 리본 = 핵심 그룹 연동
+      (idx == null || idx === 0) ? "rgba(184,145,31,0.12)" : "rgba(184,145,31,0.03)" });
   }
 
   document.getElementById("seg-asym-n").addEventListener("click", e => {
@@ -208,11 +220,13 @@
       await Plotly.relayout(gd, { paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" });
     }
   }
-  document.getElementById("dl-asym-png").addEventListener("click", () => capture("png"));
-  document.getElementById("dl-asym-svg").addEventListener("click", () => capture("svg"));
+  document.getElementById("dl-asym-png").addEventListener("click", () => { setHighlight(null); capture("png"); });
+  document.getElementById("dl-asym-svg").addEventListener("click", () => { setHighlight(null); capture("svg"); });
 
   render();
   if (document.fonts) document.fonts.ready.then(render);
+  gd.on("plotly_hover", ev => setHighlight(ev.points[0].curveNumber));
+  gd.on("plotly_unhover", () => setHighlight(null));
 })();
 </script>
 
