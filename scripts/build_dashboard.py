@@ -1750,13 +1750,13 @@ def debut_chart() -> str:
       labels.push(b0 + "–" + String(b1 % 100).padStart(2, "0"));
     }}
     const c1 = Array(nbin).fill(0), cm = Array(nbin).fill(0), cn = Array(nbin).fill(0);
-    const oneNm = Array.from({{ length: nbin }}, () => []);   // 코호트별 일회성(N편 미만) 필자
+    const oneNm = Array.from({{ length: nbin }}, () => []);   // 코호트별 일회성 [이름, 평생 편수]
     AY.forEach((years, ai) => {{
       const bd = bin(years[0]);
       cn[bd]++;
       if (years.length === 1) c1[bd]++;
       else if (years.length < N) cm[bd]++;
-      if (years.length < N) oneNm[bd].push(AN[ai]);
+      if (years.length < N) oneNm[bd].push([AN[ai], years.length]);
     }});
     const one = c1.map((v, i) => cn[i] ? Math.round(100 * v / cn[i]) : 0);
     const tot = c1.map((v, i) => cn[i] ? Math.round(100 * (v + cm[i]) / cn[i]) : 0);
@@ -1823,7 +1823,8 @@ def debut_chart() -> str:
   function resetNames() {{ box.innerHTML = HINT; }}
   function showNames(bi) {{
     if (!lastC) return;
-    const names = lastC.oneNm[bi].slice().sort((a, b) => a.localeCompare(b, "ko"));
+    const list = lastC.oneNm[bi].slice().sort((a, b) => a[0].localeCompare(b[0], "ko"));
+    const names = list.map(p => p[1] >= 2 ? p[0] + "(" + p[1] + "편)" : p[0]);
     box.innerHTML =
       '<div class="nb-head"><b>' + lastC.labels[bi] + '</b> · 일회성(' + N + '편 미만) · '
       + names.length + '명 <span class="nb-hint">(데뷔 ' + lastC.cn[bi] + '명 중)</span></div>'
