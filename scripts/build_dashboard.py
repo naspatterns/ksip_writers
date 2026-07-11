@@ -653,7 +653,7 @@ def activity_chart() -> str:
   <div class="panel-bar">
     <div class="ctl"><span class="ctl-label">구간</span>
       <span class="seg" id="seg-act-w">
-        <button data-v="4" class="on">4년</button><button data-v="5">5년</button>
+        <button data-v="2">2년</button><button data-v="3">3년</button><button data-v="4" class="on">4년</button><button data-v="5">5년</button>
       </span></div>
     <div class="ctl"><span class="ctl-label">핵심 기준</span>
       <span class="seg" id="seg-act-n">
@@ -708,6 +708,7 @@ def activity_chart() -> str:
 
   function render() {{
     const C = compute();
+    const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
     const prov = C.nbin - 1;               // 마지막 구간 = 잠정
     const xs = C.labels;
     const provOp = i => i === prov ? 0.5 : 1;
@@ -747,15 +748,15 @@ def activity_chart() -> str:
       annos.push({{ x: xs[i], y: inside ? c / 2 : c + 1.4, yref: "y",
         text: "<b>" + c + "</b>", showarrow: false,
         yanchor: inside ? "middle" : "bottom",
-        font: {{ color: inside ? (i === prov ? INK : "#FFFFFF") : GOLD, size: 12 }} }});
+        font: {{ color: inside ? (i === prov ? INK : "#FFFFFF") : GOLD, size: SM ? 9.5 : 12 }} }});
     }});
     C.total.forEach((t, i) => {{              // 활동 총계 라벨 (막대 위)
       annos.push({{ x: xs[i], y: t + 1.6, yref: "y", text: String(t), showarrow: false,
-        yanchor: "bottom", font: {{ color: MUTED, size: 10.5 }} }});
+        yanchor: "bottom", font: {{ color: MUTED, size: SM ? 9 : 10.5 }} }});
     }});
     C.share.forEach((s, i) => {{              // 점유율 값 라벨 (마커 위)
       annos.push({{ x: xs[i], y: s, yref: "y2", yshift: 11, text: "<b>" + s + "</b>",
-        showarrow: false, font: {{ color: INK, size: 10.5 }} }});
+        showarrow: false, font: {{ color: INK, size: SM ? 9 : 10.5 }} }});
     }});
 
     const layout = {{
@@ -765,7 +766,7 @@ def activity_chart() -> str:
       margin: {{ l: 56, r: 56, t: 56, b: 40 }}, height: 460,
       legend: {{ orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
                traceorder: "normal", font: {{ size: 13, color: MUTED }} }},
-      xaxis: {{ tickfont: {{ color: INK, size: 12 }}, fixedrange: true }},
+      xaxis: {{ tickangle: SM ? -45 : 0, tickfont: {{ color: INK, size: SM ? 10.5 : 12 }}, fixedrange: true }},
       yaxis: {{ range: [0, 150], tickvals: [0, 30, 60, 90],
               title: {{ text: "활동 필자 수 (명)", font: {{ color: MUTED, size: 12 }} }},
               gridcolor: GRID, tickfont: {{ color: MUTED }}, fixedrange: true }},
@@ -822,7 +823,7 @@ def stockflow_chart() -> str:
   <div class="panel-bar">
     <div class="ctl"><span class="ctl-label">구간</span>
       <span class="seg" id="seg-sf-w">
-        <button data-v="4" class="on">4년</button><button data-v="5">5년</button>
+        <button data-v="2">2년</button><button data-v="3">3년</button><button data-v="4" class="on">4년</button><button data-v="5">5년</button>
       </span></div>
     <div class="ctl"><span class="ctl-label">핵심 기준</span>
       <span class="seg" id="seg-sf-n">
@@ -882,6 +883,7 @@ def stockflow_chart() -> str:
 
   function render() {{
     const C = compute();
+    const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
     const prov = C.nbin - 1;
     const xs = C.labels;
     const provOp = i => i === prov ? 0.5 : 1;
@@ -917,12 +919,12 @@ def stockflow_chart() -> str:
       annos.push({{ x: xs[i], y: e, yref: "y2", yshift: 12, xshift: close ? -11 : 0,
         text: "<b>" + e + "</b>", showarrow: false,
         bgcolor: "rgba(255,255,255,0.92)", borderpad: 1,
-        font: {{ color: INK, size: 10.5 }} }});
+        font: {{ color: INK, size: SM ? 9 : 10.5 }} }});
       annos.push({{ x: xs[i], y: x2, yref: "y2",
         yshift: (close || x2 < 2) ? 12 : -13, xshift: close ? 11 : 0,
         text: "<b>" + x2 + "</b>", showarrow: false,
         bgcolor: "rgba(255,255,255,0.92)", borderpad: 1,
-        font: {{ color: RUST, size: 10.5 }} }});
+        font: {{ color: RUST, size: SM ? 9 : 10.5 }} }});
     }});
 
     const yMax = Math.max.apply(null, C.total) * 1.15;
@@ -934,7 +936,7 @@ def stockflow_chart() -> str:
       margin: {{ l: 56, r: 56, t: 56, b: 40 }}, height: 460,
       legend: {{ orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
                traceorder: "normal", font: {{ size: 13, color: MUTED }} }},
-      xaxis: {{ tickfont: {{ color: INK, size: 12 }}, fixedrange: true }},
+      xaxis: {{ tickangle: SM ? -45 : 0, tickfont: {{ color: INK, size: SM ? 10.5 : 12 }}, fixedrange: true }},
       yaxis: {{ range: [0, yMax],
               title: {{ text: "활동 필자 수 (명)", font: {{ color: MUTED, size: 12 }} }},
               gridcolor: GRID, tickfont: {{ color: MUTED }}, fixedrange: true }},
