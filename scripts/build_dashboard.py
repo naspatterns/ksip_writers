@@ -1108,7 +1108,13 @@ def _author_years_sadan() -> list[dict]:
         ma = [a for d, a in recs if d == "석사" and a and a != "미상"]
         return bool(phd or ma)
 
-    data = [{"y": sorted(int(v) for v in ys), "s": int(sadan(nm))}
+    def disp(pid: str) -> str:
+        if "#" in pid:
+            b, s = pid.split("#", 1)
+            return f"{b}({s})"
+        return pid
+
+    data = [{"nm": disp(nm), "y": sorted(int(v) for v in ys), "s": int(sadan(nm))}
             for nm, ys in jp.groupby("주저자")["발행연도"]]
     n_auth_s = sum(d["s"] for d in data)
     n_pap_s = sum(len(d["y"]) for d in data if d["s"])
@@ -1473,6 +1479,7 @@ def dept_flow_chart() -> str:
     </div>
   </div>
   <div id="chart-fl"></div>
+  <div id="fl-names" class="names-box"></div>
   <div class="panel-foot">주저자 기준 · 동명이인 분리 ·
     <span id="fl-def">유입 = 해당 구간 3편째 게재</span> · 이탈 = 이전 구간 마지막 게재 후 미게재 ·
     마지막 구간은 진행 중(잠정) <br>자료:
@@ -1488,7 +1495,7 @@ def dept_flow_chart() -> str:
   const GREY_D = "#A8A294";
   const Y0 = 1989, Y1 = 2026;
   const gd = document.getElementById("chart-fl");
-  let W = 4, N = 3;
+  let W = 4, N = 3, lastC = null;
 
   function compute() {{
     const nbin = Math.floor((Y1 - Y0) / W) + 1;
@@ -1499,37 +1506,44 @@ def dept_flow_chart() -> str:
       labels.push(b0 + "–" + String(b1 % 100).padStart(2, "0"));
     }}
     const z = () => Array(nbin).fill(0);
+    const nz = () => Array.from({{ length: nbin }}, () => []);
     const entG = z(), entR = z(), exiG = z(), exiR = z();
+    const entGN = nz(), entRN = nz(), exiGN = nz(), exiRN = nz();
     AS.forEach(d => {{
       if (d.y.length < N) return;
-      (d.s ? entG : entR)[bin(d.y[N - 1])]++;
-      (d.s ? exiG : exiR)[bin(d.y[d.y.length - 1])]++;
+      const eb = bin(d.y[N - 1]), xb = bin(d.y[d.y.length - 1]);
+      (d.s ? entG : entR)[eb]++; (d.s ? entGN : entRN)[eb].push(d.nm);
+      (d.s ? exiG : exiR)[xb]++; (d.s ? exiGN : exiRN)[xb].push(d.nm);
     }});
     const shift = a => [0].concat(a.slice(0, -1));   // 이탈 = 마지막 게재 다음 구간
+    const shiftN = a => [[]].concat(a.slice(0, -1));
     const xg = shift(exiG), xr = shift(exiR);
     const net = entG.map((v, b) => v + entR[b] - xg[b] - xr[b]);
-    return {{ nbin, labels, entG, entR, exiG: xg, exiR: xr, net }};
+    return {{ nbin, labels, entG, entR, exiG: xg, exiR: xr, net,
+             nm: {{ entG: entGN, entR: entRN, exiG: shiftN(exiGN), exiR: shiftN(exiRN) }} }};
   }}
 
   function render() {{
     const C = compute();
+    lastC = C;
     const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
     const prov = C.nbin - 1, xs = C.labels;
     const provOp = i => i === prov ? 0.5 : 1;
     const pat = {{ shape: xs.map((_, i) => i === prov ? "/" : ""),
                  fillmode: "overlay", fgcolor: "#FFFFFF", size: 5, solidity: 0.4 }};
-    const bar = (vals, color, name, show, side) => ({{
+    const bar = (vals, color, name, show, side, key) => ({{
       type: "bar", x: xs, y: vals, name: name, showlegend: !!show, width: 0.7,
+      meta: key,
       marker: {{ color: color, opacity: xs.map((_, i) => provOp(i)), pattern: pat,
                line: {{ color: "#FFFFFF", width: 0.8 }} }},
       hovertemplate: "%{{x}} · " + name + " " + side + " %{{customdata}}명<extra></extra>",
       customdata: vals.map(v => Math.abs(v)),
     }});
     const traces = [
-      bar(C.entG, GOLD, "인철과 출신", true, "유입"),
-      bar(C.entR, GREY_D, "그 외", true, "유입"),
-      bar(C.exiG.map(v => -v), GOLD, "인철과 출신", false, "이탈"),
-      bar(C.exiR.map(v => -v), GREY_D, "그 외", false, "이탈"),
+      bar(C.entG, GOLD, "인철과 출신", true, "유입", "entG"),
+      bar(C.entR, GREY_D, "그 외", true, "유입", "entR"),
+      bar(C.exiG.map(v => -v), GOLD, "인철과 출신", false, "이탈", "exiG"),
+      bar(C.exiR.map(v => -v), GREY_D, "그 외", false, "이탈", "exiR"),
       // 증감 선
       {{ type: "scatter", mode: "lines+markers", x: xs.slice(0, prov), y: C.net.slice(0, prov),
         name: "증감", line: {{ color: INK, width: 2 }},
@@ -1572,6 +1586,33 @@ def dept_flow_chart() -> str:
     }};
     document.getElementById("fl-def").textContent = "유입 = 해당 구간 " + N + "편째 게재";
     Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
+    resetNames();
+  }}
+
+  const box = document.getElementById("fl-names");
+  const HINT = '<span class="nb-hint">막대의 각 조각에 마우스를 올리면 '
+    + '그 조각에 집계된 필자 이름이 여기에 나열됩니다.</span>';
+  function resetNames() {{ box.innerHTML = HINT; }}
+  const KEYLAB = {{ entG: ["유입", "인철과 출신", GOLD], entR: ["유입", "그 외", MUTED],
+                  exiG: ["이탈", "인철과 출신", GOLD], exiR: ["이탈", "그 외", MUTED] }};
+  function showNames(key, bi) {{
+    if (!lastC) return;
+    const names = lastC.nm[key][bi].slice().sort((a, b) => a.localeCompare(b, "ko"));
+    const L = KEYLAB[key];
+    box.innerHTML =
+      '<div class="nb-head"><b>' + lastC.labels[bi] + '</b> · ' + L[0]
+      + ' · <span style="color:' + L[2] + '">' + L[1] + '</span> · ' + names.length + '명</div>'
+      + '<div class="nb-names">' + (names.join(", ") || "없음") + '</div>';
+  }}
+  function wireHover() {{
+    gd.on("plotly_hover", function (ev) {{
+      const pt = ev.points && ev.points[0];
+      if (!pt || !lastC) return;
+      const key = pt.data && pt.data.meta;
+      if (!key || !lastC.nm[key]) return;
+      const bi = lastC.labels.indexOf(pt.x);
+      if (bi >= 0) showNames(key, bi);
+    }});
   }}
 
   function segWire(id, fn) {{
@@ -1602,6 +1643,7 @@ def dept_flow_chart() -> str:
   document.getElementById("dl-fl-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  wireHover();
   if (document.fonts) document.fonts.ready.then(render);
 }})();
 </script>
