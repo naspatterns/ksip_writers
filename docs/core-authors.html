@@ -249,7 +249,7 @@
 
 <script>
 (function () {
-  const TOP = [{"name": "정승석", "n": 31, "last": 2019}, {"name": "이지수", "n": 20, "last": 2009}, {"name": "김호성", "n": 19, "last": 2023}, {"name": "이태승", "n": 19, "last": 2025}, {"name": "박효엽", "n": 17, "last": 2022}, {"name": "안성두", "n": 16, "last": 2019}, {"name": "황순일", "n": 13, "last": 2015}, {"name": "김선근", "n": 12, "last": 2007}, {"name": "김진영", "n": 12, "last": 2026}, {"name": "박기열", "n": 11, "last": 2022}, {"name": "김미숙(자이나)", "n": 10, "last": 2014}, {"name": "이거룡", "n": 9, "last": 2017}, {"name": "김재권", "n": 9, "last": 2022}, {"name": "성청환", "n": 9, "last": 2022}, {"name": "류현정", "n": 9, "last": 2024}, {"name": "김재민", "n": 9, "last": 2025}, {"name": "양영순", "n": 8, "last": 2025}, {"name": "이법산", "n": 7, "last": 2010}, {"name": "주명철", "n": 7, "last": 2016}, {"name": "강형철", "n": 7, "last": 2018}, {"name": "심재관", "n": 7, "last": 2019}, {"name": "박문성", "n": 7, "last": 2019}, {"name": "심준보", "n": 7, "last": 2022}, {"name": "김성철(유식)", "n": 7, "last": 2024}, {"name": "김서리", "n": 7, "last": 2024}, {"name": "최지연", "n": 7, "last": 2025}, {"name": "서성원", "n": 6, "last": 2002}, {"name": "이호근", "n": 6, "last": 2006}, {"name": "김성철(중관)", "n": 6, "last": 2006}, {"name": "이영진", "n": 6, "last": 2017}];
+  const TOP = [{"name": "정승석", "n": 31, "first": 1989, "last": 2019}, {"name": "이지수", "n": 20, "first": 1989, "last": 2009}, {"name": "김호성", "n": 19, "first": 1992, "last": 2023}, {"name": "이태승", "n": 19, "first": 1993, "last": 2025}, {"name": "박효엽", "n": 17, "first": 2004, "last": 2022}, {"name": "안성두", "n": 16, "first": 2002, "last": 2019}, {"name": "황순일", "n": 13, "first": 2003, "last": 2015}, {"name": "김선근", "n": 12, "first": 1989, "last": 2007}, {"name": "김진영", "n": 12, "first": 2004, "last": 2026}, {"name": "박기열", "n": 11, "first": 2014, "last": 2022}, {"name": "김미숙(자이나)", "n": 10, "first": 2002, "last": 2014}, {"name": "이거룡", "n": 9, "first": 1994, "last": 2017}, {"name": "김재권", "n": 9, "first": 2008, "last": 2022}, {"name": "성청환", "n": 9, "first": 2011, "last": 2022}, {"name": "류현정", "n": 9, "first": 2014, "last": 2024}, {"name": "김재민", "n": 9, "first": 2008, "last": 2025}, {"name": "양영순", "n": 8, "first": 2016, "last": 2025}, {"name": "이법산", "n": 7, "first": 1989, "last": 2010}, {"name": "주명철", "n": 7, "first": 1993, "last": 2016}, {"name": "강형철", "n": 7, "first": 2011, "last": 2018}, {"name": "심재관", "n": 7, "first": 1997, "last": 2019}, {"name": "박문성", "n": 7, "first": 2007, "last": 2019}, {"name": "심준보", "n": 7, "first": 2008, "last": 2022}, {"name": "김성철(유식)", "n": 7, "first": 2002, "last": 2024}, {"name": "김서리", "n": 7, "first": 2012, "last": 2024}, {"name": "최지연", "n": 7, "first": 2008, "last": 2025}, {"name": "서성원", "n": 6, "first": 1989, "last": 2002}, {"name": "이호근", "n": 6, "first": 1992, "last": 2006}, {"name": "김성철(중관)", "n": 6, "first": 1993, "last": 2006}, {"name": "이영진", "n": 6, "first": 2005, "last": 2017}];
   const INK = "#1C1B19", MUTED = "#6E675C", GOLD = "#B8911F", GRID = "#E4E2DA";
   const gd = document.getElementById("chart-top");
   let N = 20;
@@ -267,8 +267,8 @@
       textposition: "outside", textangle: 0,
       textfont: { color: MUTED, size: 12 },
       cliponaxis: false,
-      customdata: rows.map(r => r.last),
-      hovertemplate: "%{y} · %{x}편 · 마지막 게재 %{customdata}년<extra></extra>",
+      customdata: rows.map(r => [r.first, r.last]),
+      hovertemplate: "%{y} · %{x}편 · 활동 기간 %{customdata[0]}–%{customdata[1]}<extra></extra>",
       name: "",
     }];
     const layout = {

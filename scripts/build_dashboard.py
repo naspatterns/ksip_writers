@@ -578,7 +578,8 @@ def top_authors_chart() -> str:
     top = []
     for nm, r in st.head(30).iterrows():
         disp = nm.replace("#", "(") + ")" if "#" in nm else nm
-        top.append({"name": disp, "n": int(r["n"]), "last": int(r["last"])})
+        top.append({"name": disp, "n": int(r["n"]),
+                    "first": int(r["first"]), "last": int(r["last"])})
     assert top[0]["name"] == "정승석" and top[0]["n"] == 31, top[0]
 
     top_js = json.dumps(top, ensure_ascii=False)
@@ -620,8 +621,8 @@ def top_authors_chart() -> str:
       textposition: "outside", textangle: 0,
       textfont: {{ color: MUTED, size: 12 }},
       cliponaxis: false,
-      customdata: rows.map(r => r.last),
-      hovertemplate: "%{{y}} · %{{x}}편 · 마지막 게재 %{{customdata}}년<extra></extra>",
+      customdata: rows.map(r => [r.first, r.last]),
+      hovertemplate: "%{{y}} · %{{x}}편 · 활동 기간 %{{customdata[0]}}–%{{customdata[1]}}<extra></extra>",
       name: "",
     }}];
     const layout = {{
