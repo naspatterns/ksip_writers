@@ -1987,7 +1987,7 @@ def devotion_chart() -> str:
     """헌신성 ③: 게재 핵심의 평균 헌신도. 변수 = 구간 폭(4/5년), 핵심 기준(3~5편)."""
     return f"""
 <div class="panel">
-  <h2>『인도철학』 게재 핵심의 평균 헌신도</h2>
+  <h2>『인도철학』 게재 핵심 필진의 평균 헌신도</h2>
   <div class="panel-bar">
     <div class="ctl"><span class="ctl-label">구간</span>
       <span class="seg" id="seg-dv-w">
@@ -2002,6 +2002,7 @@ def devotion_chart() -> str:
     </div>
   </div>
   <div id="chart-dv"></div>
+  <div id="dv-names" class="names-box"></div>
   <div class="panel-foot">헌신도 = 그 구간 자기 KCI 논문 중 『인도철학』 비율(게재 핵심만 평균) ·
     N = 게재 핵심 수 · 마지막 구간은 진행 중(잠정) <br>자료:
     <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/raw/core_authors_kci_publications.csv">core_authors_kci_publications.csv</a> ·
@@ -2015,7 +2016,7 @@ def devotion_chart() -> str:
   const INK = "{INK}", MUTED = "{MUTED}", GOLD = "{GOLD}", GRID = "{GRID}";
   const Y0 = 1989, Y1 = 2026;
   const gd = document.getElementById("chart-dv");
-  let W = 4, N = 3;
+  let W = 4, N = 3, lastC = null;
 
   function compute() {{
     const nbin = Math.floor((Y1 - Y0) / W) + 1;
@@ -2026,6 +2027,7 @@ def devotion_chart() -> str:
       labels.push(b0 + "–" + String(b1 % 100).padStart(2, "0"));
     }}
     const sums = Array(nbin).fill(0), ncon = Array(nbin).fill(0);
+    const dev = Array.from({{ length: nbin }}, () => []);   // 구간별 [이름, 개인 헌신도%]
     KC.forEach(p => {{
       if (p.j.length < N) return;
       const cnt = Array(nbin).fill(0);
@@ -2038,15 +2040,17 @@ def devotion_chart() -> str:
         if (!ind[i] || cum[i] < N) continue;
         ncon[i]++;
         sums[i] += 100 * ind[i] / tot[i];
+        dev[i].push([p.nm, Math.round(100 * ind[i] / tot[i])]);
       }}
     }});
-    return {{ nbin, labels, ncon,
+    return {{ nbin, labels, ncon, dev,
              avg: sums.map((s, i) => ncon[i] ? Math.round(s / ncon[i]) : 0),
              undercov: bin(2000) }};
   }}
 
   function render() {{
     const C = compute();
+    lastC = C;
     const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
     const prov = C.nbin - 1, xs = C.labels;
     let S = 0;
@@ -2094,6 +2098,28 @@ def devotion_chart() -> str:
       hoverlabel: {{ bgcolor: "#FFFFFF", bordercolor: GRID, font: {{ color: INK }} }},
     }};
     Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
+    resetNames();
+  }}
+
+  const box = document.getElementById("dv-names");
+  const HINT = '<span class="nb-hint"><b style="color:' + GOLD + '">금색 꼭지점</b>에 '
+    + '마우스를 올리면 그 구간 『인도철학』 게재 필자와 각자의 헌신도(%)가 여기에 나열됩니다.</span>';
+  function resetNames() {{ box.innerHTML = HINT; }}
+  function showNames(bi) {{
+    if (!lastC) return;
+    const list = lastC.dev[bi].slice().sort((a, b) => a[0].localeCompare(b[0], "ko"));
+    box.innerHTML =
+      '<div class="nb-head"><b>' + lastC.labels[bi] + '</b> · <span style="color:' + GOLD
+      + '">『인도철학』 게재</span> · ' + list.length + '명 · 평균 ' + lastC.avg[bi] + '%</div>'
+      + '<div class="nb-names">' + (list.map(p => p[0] + "(" + p[1] + "%)").join(", ") || "없음") + '</div>';
+  }}
+  function wireHover() {{
+    gd.on("plotly_hover", function (ev) {{
+      const pt = ev.points && ev.points[0];
+      if (!pt || !lastC) return;
+      const bi = lastC.labels.indexOf(pt.x);
+      if (bi >= 0 && lastC.ncon[bi] > 0) showNames(bi);
+    }});
   }}
 
   function segWire(id, fn) {{
@@ -2124,6 +2150,7 @@ def devotion_chart() -> str:
   document.getElementById("dl-dv-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  wireHover();
   if (document.fonts) document.fonts.ready.then(render);
 }})();
 </script>
