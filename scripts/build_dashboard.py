@@ -525,11 +525,16 @@ def top_authors_chart() -> str:
     papers.loc[ks, "주저자"] = ["김성철#유식" if "금강" in str(a) else "김성철#중관"
                                 for a in papers.loc[ks, "주저자 소속기관"].fillna("")]
     papers.loc[papers["주저자"] == "김미숙", "주저자"] = "김미숙#자이나"
-    life = papers.groupby("주저자").size().sort_values(ascending=False)
-    top = [{"name": nm.replace("#", "("), "n": int(c)} for nm, c in life.head(30).items()]
-    top = [{"name": t["name"] + ")" if "(" in t["name"] else t["name"], "n": t["n"]}
-           for t in top]
-    assert top[0] == {"name": "정승석", "n": 31}, top[0]
+    jp = papers[papers["발행연도"].notna()].copy()
+    jp["발행연도"] = jp["발행연도"].astype(int)
+    st = jp.groupby("주저자")["발행연도"].agg(n="size", last="max", first="min")
+    # 동률이면 최종 편수에 먼저 도달한(마지막 게재가 이른) 순, 그다음 데뷔 이른 순
+    st = st.sort_values(["n", "last", "first"], ascending=[False, True, True])
+    top = []
+    for nm, r in st.head(30).iterrows():
+        disp = nm.replace("#", "(") + ")" if "#" in nm else nm
+        top.append({"name": disp, "n": int(r["n"]), "last": int(r["last"])})
+    assert top[0]["name"] == "정승석" and top[0]["n"] == 31, top[0]
 
     top_js = json.dumps(top, ensure_ascii=False)
     return f"""
@@ -570,7 +575,8 @@ def top_authors_chart() -> str:
       textposition: "outside", textangle: 0,
       textfont: {{ color: MUTED, size: 12 }},
       cliponaxis: false,
-      hovertemplate: "%{{y}} · %{{x}}편<extra></extra>",
+      customdata: rows.map(r => r.last),
+      hovertemplate: "%{{y}} · %{{x}}편 · 마지막 게재 %{{customdata}}년<extra></extra>",
       name: "",
     }}];
     const layout = {{
