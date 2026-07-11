@@ -1366,6 +1366,7 @@ def dept_share_chart() -> str:
     </div>
   </div>
   <div id="chart-sh"></div>
+  <div id="sh-names" class="names-box"></div>
   <div class="panel-foot">주저자 기준 · 동명이인 분리 ·
     비중 = 그 구간 핵심 논문 ÷ 그 구간 전체 논문 ·
     <span id="sh-def">핵심 = 그 구간까지 누적 3편 이상</span> ·
@@ -1382,7 +1383,7 @@ def dept_share_chart() -> str:
   const GREY_TOT = "#B8B4A8";
   const Y0 = 1989, Y1 = 2026;
   const gd = document.getElementById("chart-sh");
-  let W = 4, N = 3;
+  let W = 4, N = 3, lastC = null;
 
   function compute() {{
     const nbin = Math.floor((Y1 - Y0) / W) + 1;
@@ -1393,6 +1394,9 @@ def dept_share_chart() -> str:
       labels.push(b0 + "–" + String(b1 % 100).padStart(2, "0"));
     }}
     const tot = Array(nbin).fill(0), gp = Array(nbin).fill(0), rp = Array(nbin).fill(0);
+    // 구간별 분자에 기여한 동적 핵심 [이름, 그 구간 게재 편수] — W·N 변경 시 함께 재계산됨
+    const gNm = Array.from({{ length: nbin }}, () => []);
+    const rNm = Array.from({{ length: nbin }}, () => []);
     let nG = 0, nR = 0;
     AS.forEach(d => {{
       if (d.y.length >= N) {{ d.s ? nG++ : nR++; }}
@@ -1402,10 +1406,13 @@ def dept_share_chart() -> str:
       for (let b = 0; b < nbin; b++) {{
         cum += cnt[b];
         tot[b] += cnt[b];
-        if (cum >= N) (d.s ? gp : rp)[b] += cnt[b];
+        if (cum >= N) {{
+          (d.s ? gp : rp)[b] += cnt[b];
+          if (cnt[b] > 0) (d.s ? gNm : rNm)[b].push([d.nm, cnt[b]]);
+        }}
       }}
     }});
-    return {{ nbin, labels,
+    return {{ nbin, labels, gNm, rNm,
       gpct: gp.map((v, b) => tot[b] ? Math.round(100 * v / tot[b]) : 0),
       rpct: rp.map((v, b) => tot[b] ? Math.round(100 * v / tot[b]) : 0),
       tpct: gp.map((v, b) => tot[b] ? Math.round(100 * (v + rp[b]) / tot[b]) : 0),
@@ -1419,7 +1426,7 @@ def dept_share_chart() -> str:
         marker: {{ size: msize, symbol: sym, color: color, line: {{ color: "#FFFFFF", width: 1.1 }} }},
         hovertemplate: "%{{x}} · " + name + " %{{y}}%<extra></extra>" }},
       {{ type: "scatter", mode: "lines+markers", x: xs.slice(prov - 1), y: vals.slice(prov - 1),
-        showlegend: false, line: {{ color: color, width: width, dash: "dot" }},
+        name: name, showlegend: false, line: {{ color: color, width: width, dash: "dot" }},
         marker: {{ size: msize, symbol: sym, color: ["rgba(0,0,0,0)", "#FFFFFF"],
                  line: {{ color: color, width: 1.2 }} }},
         hovertemplate: "%{{x}} · " + name + " %{{y}}%<extra></extra>" }},
@@ -1428,6 +1435,7 @@ def dept_share_chart() -> str:
 
   function render() {{
     const C = compute();
+    lastC = C;
     const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
     const prov = C.nbin - 1, xs = C.labels;
     const traces = [
@@ -1467,6 +1475,42 @@ def dept_share_chart() -> str:
     }};
     document.getElementById("sh-def").textContent = "핵심 = 그 구간까지 누적 " + N + "편 이상";
     Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
+    resetNames();
+  }}
+
+  const box = document.getElementById("sh-names");
+  const HINT = '<span class="nb-hint">각 선의 꼭지점에 마우스를 올리면 그 수치에 집계된 '
+    + '핵심 필자와 그 구간 게재 편수가 여기에 나열됩니다.</span>';
+  function resetNames() {{ box.innerHTML = HINT; }}
+  function showNames(kind, bi) {{
+    if (!lastC) return;
+    const src = kind === "g" ? lastC.gNm[bi]
+              : kind === "r" ? lastC.rNm[bi]
+              : lastC.gNm[bi].concat(lastC.rNm[bi]);
+    const list = src.slice().sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"));
+    const papers = list.reduce((s, p) => s + p[1], 0);
+    const LAB = {{ g: ["인철과 출신 핵심", GOLD], r: ["비인철과 출신 핵심", INK],
+                 t: ["핵심 필진 전체", MUTED] }};
+    box.innerHTML =
+      '<div class="nb-head"><b>' + lastC.labels[bi] + '</b> · <span style="color:' + LAB[kind][1]
+      + '">' + LAB[kind][0] + '</span> · ' + list.length + '명 · 논문 ' + papers + '편</div>'
+      + '<div class="nb-names">'
+      + (list.map(p => p[1] >= 2 ? p[0] + "(" + p[1] + "편)" : p[0]).join(", ") || "없음")
+      + '</div>';
+  }}
+  function wireHover() {{
+    gd.on("plotly_hover", function (ev) {{
+      const pt = ev.points && ev.points[0];
+      if (!pt || !lastC) return;
+      const nm = (pt.data && pt.data.name) || "";
+      let kind = null;
+      if (nm.indexOf("비인철과") === 0) kind = "r";
+      else if (nm.indexOf("인철과") === 0) kind = "g";
+      else if (nm.indexOf("핵심 필진 전체") === 0) kind = "t";
+      if (!kind) return;
+      const bi = lastC.labels.indexOf(pt.x);
+      if (bi >= 0) showNames(kind, bi);
+    }});
   }}
 
   function segWire(id, fn) {{
@@ -1497,6 +1541,7 @@ def dept_share_chart() -> str:
   document.getElementById("dl-sh-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  wireHover();
   if (document.fonts) document.fonts.ready.then(render);
 }})();
 </script>
