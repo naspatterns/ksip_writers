@@ -1211,7 +1211,7 @@ def dept_share_chart() -> str:
   <div class="panel-bar">
     <div class="ctl"><span class="ctl-label">구간</span>
       <span class="seg" id="seg-sh-w">
-        <button data-v="4" class="on">4년</button><button data-v="5">5년</button>
+        <button data-v="2">2년</button><button data-v="3">3년</button><button data-v="4" class="on">4년</button><button data-v="5">5년</button>
       </span></div>
     <div class="ctl"><span class="ctl-label">핵심 기준</span>
       <span class="seg" id="seg-sh-n">
@@ -1284,6 +1284,7 @@ def dept_share_chart() -> str:
 
   function render() {{
     const C = compute();
+    const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
     const prov = C.nbin - 1, xs = C.labels;
     const traces = [
       ...lineTraces(xs, C.tpct, prov, GREY_TOT, "circle", "핵심 필진 전체", 1.8, 5),
@@ -1294,17 +1295,17 @@ def dept_share_chart() -> str:
     for (let i = 1; i < C.nbin; i++) {{
       annos.push({{ x: xs[i], y: C.gpct[i], yref: "y", yshift: 11, text: "<b>" + C.gpct[i] + "%</b>",
         showarrow: false, bgcolor: "rgba(255,255,255,0.85)", borderpad: 1,
-        font: {{ color: GOLD, size: 10.5 }} }});
+        font: {{ color: GOLD, size: SM ? 9 : 10.5 }} }});
       annos.push({{ x: xs[i], y: C.rpct[i], yref: "y", yshift: C.rpct[i] >= 16 ? -12 : 12,
         text: "<b>" + C.rpct[i] + "%</b>", showarrow: false,
         bgcolor: "rgba(255,255,255,0.85)", borderpad: 1,
-        font: {{ color: INK, size: 10.5 }} }});
+        font: {{ color: INK, size: SM ? 9 : 10.5 }} }});
       if (C.rpct[i] > 2) {{
         annos.push({{ x: xs[i], y: C.tpct[i], yref: "y",
           yshift: (C.tpct[i] - C.gpct[i]) >= 10 ? 10 : 15,
           text: C.tpct[i] + "%", showarrow: false,
           bgcolor: "rgba(255,255,255,0.85)", borderpad: 1,
-          font: {{ color: "#8A867B", size: 10 }} }});
+          font: {{ color: "#8A867B", size: SM ? 8.5 : 10 }} }});
       }}
     }}
     const layout = {{
@@ -1313,7 +1314,7 @@ def dept_share_chart() -> str:
       margin: {{ l: 56, r: 20, t: 56, b: 40 }}, height: 440,
       legend: {{ orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
                traceorder: "normal", font: {{ size: 12.5, color: MUTED }} }},
-      xaxis: {{ tickfont: {{ color: INK, size: 12 }}, fixedrange: true }},
+      xaxis: {{ tickangle: SM ? -45 : 0, tickfont: {{ color: INK, size: SM ? 10.5 : 12 }}, fixedrange: true }},
       yaxis: {{ range: [0, 100], tickvals: [0, 20, 40, 60, 80, 100],
               title: {{ text: "전체 논문 중 비중 (%)", font: {{ color: MUTED, size: 12 }} }},
               gridcolor: GRID, tickfont: {{ color: MUTED }}, fixedrange: true }},
@@ -1367,7 +1368,7 @@ def dept_flow_chart() -> str:
   <div class="panel-bar">
     <div class="ctl"><span class="ctl-label">구간</span>
       <span class="seg" id="seg-fl-w">
-        <button data-v="4" class="on">4년</button><button data-v="5">5년</button>
+        <button data-v="2">2년</button><button data-v="3">3년</button><button data-v="4" class="on">4년</button><button data-v="5">5년</button>
       </span></div>
     <div class="ctl"><span class="ctl-label">핵심 기준</span>
       <span class="seg" id="seg-fl-n">
@@ -1418,6 +1419,7 @@ def dept_flow_chart() -> str:
 
   function render() {{
     const C = compute();
+    const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
     const prov = C.nbin - 1, xs = C.labels;
     const provOp = i => i === prov ? 0.5 : 1;
     const pat = {{ shape: xs.map((_, i) => i === prov ? "/" : ""),
@@ -1449,13 +1451,13 @@ def dept_flow_chart() -> str:
     for (let i = 0; i < C.nbin; i++) {{
       const up = C.entG[i] + C.entR[i], dn = C.exiG[i] + C.exiR[i];
       if (up > 0) annos.push({{ x: xs[i], y: up, yref: "y", yshift: 9, text: String(up),
-        showarrow: false, font: {{ color: MUTED, size: 10.5 }} }});
+        showarrow: false, font: {{ color: MUTED, size: SM ? 9 : 10.5 }} }});
       if (dn > 0) annos.push({{ x: xs[i], y: -dn, yref: "y", yshift: -9, text: String(dn),
-        showarrow: false, font: {{ color: MUTED, size: 10.5 }} }});
+        showarrow: false, font: {{ color: MUTED, size: SM ? 9 : 10.5 }} }});
       annos.push({{ x: xs[i], y: C.net[i], yref: "y", xshift: 13,
         text: "<b>" + (C.net[i] > 0 ? "+" : "") + C.net[i] + "</b>", showarrow: false,
         bgcolor: "rgba(255,255,255,0.9)", borderpad: 1,
-        font: {{ color: INK, size: 10 }} }});
+        font: {{ color: INK, size: SM ? 8.5 : 10 }} }});
     }}
     const hi = Math.max.apply(null, C.entG.map((v, b) => v + C.entR[b]));
     const lo = Math.max.apply(null, C.exiG.map((v, b) => v + C.exiR[b]));
@@ -1466,7 +1468,7 @@ def dept_flow_chart() -> str:
       margin: {{ l: 56, r: 20, t: 56, b: 40 }}, height: 440,
       legend: {{ orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
                traceorder: "normal", font: {{ size: 13, color: MUTED }} }},
-      xaxis: {{ tickfont: {{ color: INK, size: 12 }}, fixedrange: true }},
+      xaxis: {{ tickangle: SM ? -45 : 0, tickfont: {{ color: INK, size: SM ? 10.5 : 12 }}, fixedrange: true }},
       yaxis: {{ range: [-(lo * 1.25 + 2), hi * 1.25 + 2],
               title: {{ text: "유입(+) · 이탈(−) (명)", font: {{ color: MUTED, size: 12 }} }},
               gridcolor: GRID, zeroline: true, zerolinecolor: MUTED, zerolinewidth: 1,
@@ -1566,7 +1568,7 @@ def debut_chart() -> str:
   <div class="panel-bar">
     <div class="ctl"><span class="ctl-label">구간</span>
       <span class="seg" id="seg-db-w">
-        <button data-v="4" class="on">4년</button><button data-v="5">5년</button>
+        <button data-v="2">2년</button><button data-v="3">3년</button><button data-v="4" class="on">4년</button><button data-v="5">5년</button>
       </span></div>
     <div class="ctl"><span class="ctl-label">핵심 기준</span>
       <span class="seg" id="seg-db-n">
@@ -1615,6 +1617,7 @@ def debut_chart() -> str:
 
   function render() {{
     const C = compute();
+    const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
     const prov = C.nbin - 2, xs = C.labels;            // 마지막 두 코호트 = 잠정
     const pat = i => i >= prov ? "/" : "";
     const traces = [
@@ -1641,7 +1644,7 @@ def debut_chart() -> str:
     const annos = C.tot.map((t, i) => ({{ x: xs[i], y: t, yref: "y", yshift: 10,
       text: "<b>" + t + "</b>", showarrow: false,
       bgcolor: "rgba(255,255,255,0.85)", borderpad: 1,
-      font: {{ color: INK, size: 10.5 }} }}));
+      font: {{ color: INK, size: SM ? 9 : 10.5 }} }}));
     const layout = {{
       barmode: "stack", bargap: 0.3,
       paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
@@ -1649,7 +1652,7 @@ def debut_chart() -> str:
       margin: {{ l: 56, r: 20, t: 56, b: 40 }}, height: 420,
       legend: {{ orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
                traceorder: "normal", font: {{ size: 13, color: MUTED }} }},
-      xaxis: {{ tickfont: {{ color: INK, size: 12 }}, fixedrange: true }},
+      xaxis: {{ tickangle: SM ? -45 : 0, tickfont: {{ color: INK, size: SM ? 10.5 : 12 }}, fixedrange: true }},
       yaxis: {{ range: [0, 115], tickvals: [0, 20, 40, 60, 80, 100],
               title: {{ text: "데뷔 코호트 중 비율 (%)", font: {{ color: MUTED, size: 12 }} }},
               gridcolor: GRID, tickfont: {{ color: MUTED }}, fixedrange: true }},
@@ -1705,7 +1708,7 @@ def kci_activity_chart() -> str:
   <div class="panel-bar">
     <div class="ctl"><span class="ctl-label">구간</span>
       <span class="seg" id="seg-ka-w">
-        <button data-v="4" class="on">4년</button><button data-v="5">5년</button>
+        <button data-v="2">2년</button><button data-v="3">3년</button><button data-v="4" class="on">4년</button><button data-v="5">5년</button>
       </span></div>
     <div class="ctl"><span class="ctl-label">핵심 기준</span>
       <span class="seg" id="seg-ka-n">
@@ -1762,6 +1765,7 @@ def kci_activity_chart() -> str:
 
   function render() {{
     const C = compute();
+    const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
     const prov = C.nbin - 1, xs = C.labels;
     const yMax = Math.max.apply(null, C.act) * 1.22;
     const traces = [
@@ -1791,16 +1795,16 @@ def kci_activity_chart() -> str:
     C.act.forEach((a, i) => {{
       if (a) annos.push({{ x: xs[i], y: a, yref: "y", yshift: 11, text: "<b>" + a + "</b>",
         showarrow: false, bgcolor: "rgba(255,255,255,0.85)", borderpad: 1,
-        font: {{ color: INK, size: 10.5 }} }});
+        font: {{ color: INK, size: SM ? 9 : 10.5 }} }});
       if (C.indo[i] && C.indo[i] !== a) annos.push({{ x: xs[i], y: C.indo[i], yref: "y",
         yshift: -11, text: "<b>" + C.indo[i] + "</b>", showarrow: false,
         bgcolor: "rgba(255,255,255,0.85)", borderpad: 1,
-        font: {{ color: GOLD, size: 10.5 }} }});
+        font: {{ color: GOLD, size: SM ? 9 : 10.5 }} }});
     }});
     for (let i = C.nbin - 2; i < C.nbin; i++) {{
       if (C.act[i] - C.indo[i] >= 3) annos.push({{ x: xs[i], y: (C.act[i] + C.indo[i]) / 2,
         yref: "y", text: "<b>" + C.pctOut[i] + "%</b>", showarrow: false,
-        font: {{ color: MUTED, size: 11 }} }});
+        font: {{ color: MUTED, size: SM ? 9.5 : 11 }} }});
     }}
     annos.push({{ x: xs[Math.max(1, Math.floor(C.undercov / 2))], y: yMax * 0.94,
       yref: "y", text: "KCI 초기 미커버(밖=0 인공값)", showarrow: false,
@@ -1811,7 +1815,7 @@ def kci_activity_chart() -> str:
       margin: {{ l: 56, r: 20, t: 56, b: 40 }}, height: 440,
       legend: {{ orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
                traceorder: "normal", font: {{ size: 12.5, color: MUTED }} }},
-      xaxis: {{ tickfont: {{ color: INK, size: 12 }}, fixedrange: true }},
+      xaxis: {{ tickangle: SM ? -45 : 0, tickfont: {{ color: INK, size: SM ? 10.5 : 12 }}, fixedrange: true }},
       yaxis: {{ range: [0, yMax],
               title: {{ text: "핵심 필진 수 (명)", font: {{ color: MUTED, size: 12 }} }},
               gridcolor: GRID, tickfont: {{ color: MUTED }}, fixedrange: true }},
@@ -1868,7 +1872,7 @@ def devotion_chart() -> str:
   <div class="panel-bar">
     <div class="ctl"><span class="ctl-label">구간</span>
       <span class="seg" id="seg-dv-w">
-        <button data-v="4" class="on">4년</button><button data-v="5">5년</button>
+        <button data-v="2">2년</button><button data-v="3">3년</button><button data-v="4" class="on">4년</button><button data-v="5">5년</button>
       </span></div>
     <div class="ctl"><span class="ctl-label">핵심 기준</span>
       <span class="seg" id="seg-dv-n">
@@ -1924,6 +1928,7 @@ def devotion_chart() -> str:
 
   function render() {{
     const C = compute();
+    const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
     const prov = C.nbin - 1, xs = C.labels;
     let S = 0;
     while (S < C.nbin && C.ncon[S] === 0) S++;
@@ -1943,10 +1948,10 @@ def devotion_chart() -> str:
       annos.push({{ x: xs[i], y: v, yref: "y", yshift: up ? 10 : -12,
         text: "<b>" + v + "%</b>", showarrow: false,
         bgcolor: "rgba(255,255,255,0.8)", borderpad: 1,
-        font: {{ color: i <= C.undercov ? MUTED : INK, size: 10.5 }} }});
+        font: {{ color: i <= C.undercov ? MUTED : INK, size: SM ? 9 : 10.5 }} }});
     }}
     C.ncon.forEach((n, i) => annos.push({{ x: xs[i], y: -13, yref: "y", text: "N=" + n,
-      showarrow: false, font: {{ color: MUTED, size: 10 }} }}));
+      showarrow: false, font: {{ color: MUTED, size: SM ? 8.5 : 10 }} }}));
     annos.push({{ x: xs[Math.max(1, Math.floor(C.undercov / 2))], y: 14, yref: "y",
       text: "KCI 초기 미커버(헌신도 과대)", showarrow: false,
       font: {{ color: MUTED, size: 10.5 }} }});
@@ -1955,7 +1960,7 @@ def devotion_chart() -> str:
       font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
       margin: {{ l: 56, r: 20, t: 20, b: 40 }}, height: 440,
       showlegend: false,
-      xaxis: {{ tickfont: {{ color: INK, size: 12 }}, fixedrange: true }},
+      xaxis: {{ tickangle: SM ? -45 : 0, tickfont: {{ color: INK, size: SM ? 10.5 : 12 }}, fixedrange: true }},
       yaxis: {{ range: [-20, 112], tickvals: [0, 25, 50, 75, 100],
               ticktext: ["0", "25", "50", "75", "100%"],
               title: {{ text: "평균 개인 헌신도 (자기 논문 중 %)", font: {{ color: MUTED, size: 12 }} }},
