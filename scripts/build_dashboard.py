@@ -1728,7 +1728,7 @@ def debut_chart() -> str:
     await Plotly.relayout(gd, {{ paper_bgcolor: "#FFFFFF", plot_bgcolor: "#FFFFFF" }});
     try {{
       await Plotly.downloadImage(gd, {{
-        format: fmt, width: 960, height: 420,
+        format: fmt, width: 1080, height: 380,
         scale: fmt === "png" ? 4 : 1,
         filename: "인도철학_데뷔코호트_일회성비율",
       }});
