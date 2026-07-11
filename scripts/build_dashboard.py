@@ -89,6 +89,11 @@ CSS = f"""
   .dl button:hover {{ color:var(--ink); border-color:var(--muted); }}
   .panel-foot {{ margin-top:8px; color:var(--muted); font-size:.8rem; }}
   .panel-foot a {{ color:var(--muted); }}
+  .names-box {{ margin-top:12px; padding:11px 14px; border:1px solid var(--grid);
+               border-radius:8px; background:var(--barbg); min-height:3.1em; font-size:.86rem; }}
+  .names-box .nb-head {{ font-size:.8rem; margin-bottom:5px; }}
+  .names-box .nb-names {{ color:var(--ink); line-height:1.75; }}
+  .names-box .nb-hint {{ color:var(--muted); }}
   .pending {{ color:var(--muted); padding:48px 0; text-align:center; }}
 
   footer {{ border-top:1px solid var(--grid); padding:20px 32px 40px; color:var(--muted); font-size:.82rem; }}
@@ -1589,6 +1594,12 @@ def _core_kci() -> list[dict]:
     K = K[K["person_id"].isin(core)].drop_duplicates(["person_id", "artiId"])
     assert not core - set(K["person_id"])
 
+    def disp(pid: str) -> str:
+        if "#" in pid:
+            b, s = pid.split("#", 1)
+            return f"{b}({s})"
+        return pid
+
     jy = jp.groupby("주저자")["발행연도"].apply(lambda s: sorted(int(v) for v in s))
     emb = []
     for pid in sorted(core):
@@ -1596,7 +1607,7 @@ def _core_kci() -> list[dict]:
         ky = sorted((int(y), int(j == "인도철학"))
                     for y, j in zip(pd.to_numeric(kk["pub_year"], errors="coerce"), kk["journal"])
                     if pd.notna(y))
-        emb.append({"j": jy[pid], "k": [list(t) for t in ky]})
+        emb.append({"nm": disp(pid), "j": jy[pid], "k": [list(t) for t in ky]})
     assert len(emb) == 70
     return emb
 
@@ -1750,7 +1761,7 @@ def kci_activity_chart() -> str:
     """헌신성 ②: 활동 핵심 필진과 그중 인도철학 게재 수. 변수 = 구간 폭(4/5년), 핵심 기준(3~5편)."""
     return f"""
 <div class="panel">
-  <h2>활동 핵심 필진과 그중 『인도철학』 게재 수</h2>
+  <h2>KCI 활동 핵심 필진과 『인도철학』 게재 핵심 필진의 수</h2>
   <div class="panel-bar">
     <div class="ctl"><span class="ctl-label">구간</span>
       <span class="seg" id="seg-ka-w">
@@ -1765,6 +1776,7 @@ def kci_activity_chart() -> str:
     </div>
   </div>
   <div id="chart-ka"></div>
+  <div id="ka-names" class="names-box"></div>
   <div class="panel-foot">
     <span id="ka-def">핵심 = 『인도철학』 누적 3편 도달 시점부터</span> ·
     활동 = 그 구간 KCI 등재(후보)지 게재 · 마지막 구간은 진행 중(잠정) <br>자료:
@@ -1779,7 +1791,7 @@ def kci_activity_chart() -> str:
   const INK = "{INK}", MUTED = "{MUTED}", GOLD = "{GOLD}", GRID = "{GRID}";
   const Y0 = 1989, Y1 = 2026;
   const gd = document.getElementById("chart-ka");
-  let W = 4, N = 3;
+  let W = 4, N = 3, lastC = null;
 
   function compute() {{
     const nbin = Math.floor((Y1 - Y0) / W) + 1;
@@ -1790,6 +1802,8 @@ def kci_activity_chart() -> str:
       labels.push(b0 + "–" + String(b1 % 100).padStart(2, "0"));
     }}
     const act = Array(nbin).fill(0), indo = Array(nbin).fill(0);
+    const indoNm = Array.from({{ length: nbin }}, () => []);
+    const outNm = Array.from({{ length: nbin }}, () => []);
     KC.forEach(p => {{
       if (p.j.length < N) return;
       const cnt = Array(nbin).fill(0);
@@ -1801,16 +1815,18 @@ def kci_activity_chart() -> str:
       for (let i = 0; i < nbin; i++) {{
         if (!kAny[i] || cum[i] < N) continue;
         act[i]++;
-        if (kIndo[i]) indo[i]++;
+        if (kIndo[i]) {{ indo[i]++; indoNm[i].push(p.nm); }}
+        else outNm[i].push(p.nm);
       }}
     }});
-    return {{ nbin, labels, act, indo,
+    return {{ nbin, labels, act, indo, indoNm, outNm,
              undercov: bin(2000),
              pctOut: act.map((a, i) => a ? Math.round(100 * (a - indo[i]) / a) : 0) }};
   }}
 
   function render() {{
     const C = compute();
+    lastC = C;
     const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
     const prov = C.nbin - 1, xs = C.labels;
     const yMax = Math.max.apply(null, C.act) * 1.22;
@@ -1833,10 +1849,20 @@ def kci_activity_chart() -> str:
         marker: {{ size: 6, color: GOLD, line: {{ color: "#FFFFFF", width: 1 }} }},
         hovertemplate: "%{{x}} · 게재 %{{y}}명<extra></extra>" }},
       {{ type: "scatter", mode: "lines+markers", x: xs.slice(prov - 1), y: C.indo.slice(prov - 1),
-        showlegend: false, line: {{ color: GOLD, width: 2.3, dash: "dot" }},
+        name: "『인도철학』 게재", showlegend: false, line: {{ color: GOLD, width: 2.3, dash: "dot" }},
         marker: {{ size: 6, color: ["rgba(0,0,0,0)", "#FFFFFF"], line: {{ color: GOLD, width: 1.2 }} }},
         hovertemplate: "%{{x}} · 게재 %{{y}}명<extra></extra>" }},
     ];
+    // 음영 밴드(밖에서만 활동) 위 투명 마커 — 호버 감지용. 밴드 내부를 촘촘히 덮어 어디에 올려도 잡히게.
+    const bx = [], by = [];
+    for (let i = 0; i < C.nbin; i++) {{
+      const g = C.act[i] - C.indo[i];
+      if (g <= 0) continue;
+      const steps = Math.max(2, Math.min(14, Math.round(g)));
+      for (let s = 1; s <= steps; s++) {{ bx.push(xs[i]); by.push(C.indo[i] + g * s / (steps + 1)); }}
+    }}
+    traces.push({{ type: "scatter", mode: "markers", x: bx, y: by, name: "__band__",
+      showlegend: false, hoverinfo: "none", marker: {{ size: 18, color: "rgba(0,0,0,0)" }} }});
     const annos = [];
     C.act.forEach((a, i) => {{
       if (a) annos.push({{ x: xs[i], y: a, yref: "y", yshift: 11, text: "<b>" + a + "</b>",
@@ -1867,7 +1893,7 @@ def kci_activity_chart() -> str:
     const layout = {{
       paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
       font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
-      margin: {{ l: 56, r: 20, t: 56, b: 40 }}, height: 440,
+      margin: {{ l: 56, r: 20, t: 56, b: 40 }}, height: 440, hovermode: "closest",
       legend: {{ orientation: "h", yanchor: "bottom", y: 1.04, x: 0,
                traceorder: "normal", font: {{ size: 12.5, color: MUTED }} }},
       xaxis: {{ tickangle: SM ? -45 : 0, tickfont: {{ color: INK, size: SM ? 10.5 : 12 }}, fixedrange: true }},
@@ -1883,6 +1909,37 @@ def kci_activity_chart() -> str:
     document.getElementById("ka-def").textContent =
       "핵심 = 『인도철학』 누적 " + N + "편 도달 시점부터";
     Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
+    resetNames();
+  }}
+
+  const box = document.getElementById("ka-names");
+  const HINT = '<span class="nb-hint"><b style="color:' + GOLD + '">금색 꼭지점</b>'
+    + '(그 구간 『인도철학』 게재 필자) 또는 <b>음영 밴드</b>(인도철학 밖에서만 활동한 필자)에 '
+    + '마우스를 올리면 해당 필자 이름이 여기에 나열됩니다.</span>';
+  function resetNames() {{ box.innerHTML = HINT; }}
+  function showNames(kind, bi) {{
+    if (!lastC) return;
+    const names = (kind === "indo" ? lastC.indoNm[bi] : lastC.outNm[bi]).slice()
+      .sort((a, b) => a.localeCompare(b, "ko"));
+    const label = kind === "indo" ? "『인도철학』 게재" : "인도철학 밖에서만 활동";
+    const color = kind === "indo" ? GOLD : MUTED;
+    box.innerHTML =
+      '<div class="nb-head"><b>' + lastC.labels[bi] + '</b> · <span style="color:' + color
+      + '">' + label + '</span> · ' + names.length + '명</div>'
+      + '<div class="nb-names">' + (names.join(", ") || "없음") + '</div>';
+  }}
+  function wireHover() {{
+    gd.on("plotly_hover", function (ev) {{
+      const pt = ev.points && ev.points[0];
+      if (!pt || !lastC) return;
+      const nm = (pt.data && pt.data.name) || "";
+      let kind = null;
+      if (nm === "__band__") kind = "out";
+      else if (nm.indexOf("게재") >= 0) kind = "indo";
+      if (!kind) return;
+      const bi = lastC.labels.indexOf(pt.x);
+      if (bi >= 0) showNames(kind, bi);
+    }});
   }}
 
   function segWire(id, fn) {{
@@ -1913,6 +1970,7 @@ def kci_activity_chart() -> str:
   document.getElementById("dl-ka-svg").addEventListener("click", () => capture("svg"));
 
   render();
+  wireHover();
   if (document.fonts) document.fonts.ready.then(render);
 }})();
 </script>
