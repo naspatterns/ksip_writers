@@ -396,14 +396,14 @@
         yaxis: "y2", showlegend: false,
         line: { color: INK, width: 2 },
         marker: { size: 7, color: INK, line: { color: "#FFFFFF", width: 1.2 } },
-        hovertemplate: "%{x} · 점유율 %{y}%<extra></extra>" },
+        hovertemplate: "%{x} · 핵심 필자가 쓴 논문의 점유율 %{y}%<extra></extra>" },
       // 잠정 구간 점선 + 빈 마커
       { type: "scatter", mode: "lines+markers", x: xs.slice(prov - 1), y: C.share.slice(prov - 1),
         yaxis: "y2", showlegend: false,
         line: { color: INK, width: 2, dash: "dot" },
         marker: { size: 7, color: ["rgba(0,0,0,0)", "#FFFFFF"],
                  line: { color: INK, width: 1.2 } },
-        hovertemplate: "%{x} · 점유율 %{y}%<extra></extra>" },
+        hovertemplate: "%{x} · 핵심 필자가 쓴 논문의 점유율 %{y}%<extra></extra>" },
     ];
 
     const annos = [];
