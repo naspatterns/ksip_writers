@@ -115,7 +115,7 @@ window.addEventListener("load", function () {
     var items = leg.querySelectorAll(".traces");
     if (items.length < 2) return 1;
     var sum = 0;
-    for (var i = 0; i < items.length; i++) sum += items[i].getBoundingClientRect().width + 16;
+    for (var i = 0; i < items.length; i++) sum += items[i].getBoundingClientRect().width + 30;  // Plotly 실제 간격·패딩 여유(폰트 편차 대비)
     var fl = gd._fullLayout;
     var plotW = fl ? (fl.width - fl.margin.l - fl.margin.r) : gd.clientWidth;
     return Math.min(3, Math.max(1, Math.ceil(sum / Math.max(plotW, 60))));
