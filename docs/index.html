@@ -91,7 +91,7 @@
   </div>
   <div id="chart-overview"></div>
   <div class="panel-foot">발행 주기: 연 1회(1989–2003, 2002만 2회) · 연 2회(2004–09) · 연 3회(2010~) ·
-    연평균 = 표시 기간 평균(휴간 1990–91·미완 2026 제외) <br>자료:
+    연평균(선·막대) = 휴간 1990–91 제외 평균, 평균선은 미완 2026도 제외 <br>자료:
     <a target="_blank" rel="noopener" href="https://github.com/naspatterns/ksip_writers/blob/main/data/processed/papers.csv">papers.csv</a></div>
 </div>
 
@@ -107,8 +107,12 @@
     const out = [];
     for (let b0 = 1989; b0 <= 2026; b0 += w) {
       const b1 = Math.min(b0 + w - 1, 2026);
-      const span = D.n.slice(b0 - 1989, b1 - 1989 + 1);
-      const avg = Math.round(span.reduce((a, c) => a + c, 0) / span.length * 10) / 10;
+      let s = 0, c = 0;
+      for (let y = b0; y <= b1; y++) {      // 휴간 연도는 분모에서 제외
+        if (HIATUS.includes(y)) continue;
+        s += D.n[y - 1989]; c++;
+      }
+      const avg = c ? Math.round(s / c * 10) / 10 : 0;
       out.push({ b0, b1, avg });
     }
     return out;
