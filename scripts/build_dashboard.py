@@ -835,7 +835,7 @@ def stockflow_chart() -> str:
   </div>
   <div id="chart-sf"></div>
   <div class="panel-foot">주저자 기준 · 동명이인 분리 ·
-    <span id="sf-def">유입 = 3편째 게재</span> · 이탈 = 마지막 게재 후 미게재 ·
+    <span id="sf-def">유입 = 해당 구간 3편째 게재</span> · 이탈 = 이전 구간 마지막 게재 후 미게재 ·
     마지막 구간은 진행 중(잠정) <br>자료:
     <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
     <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a></div>
@@ -946,7 +946,7 @@ def stockflow_chart() -> str:
       annotations: annos,
       hoverlabel: {{ bgcolor: "#FFFFFF", bordercolor: GRID, font: {{ color: INK }} }},
     }};
-    document.getElementById("sf-def").textContent = "유입 = " + N + "편째 게재";
+    document.getElementById("sf-def").textContent = "유입 = 해당 구간 " + N + "편째 게재";
     Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
   }}
 
@@ -1379,7 +1379,7 @@ def dept_flow_chart() -> str:
   </div>
   <div id="chart-fl"></div>
   <div class="panel-foot">주저자 기준 · 동명이인 분리 ·
-    <span id="fl-def">유입 = 3편째 게재</span> · 이탈 = 마지막 게재 후 미게재 ·
+    <span id="fl-def">유입 = 해당 구간 3편째 게재</span> · 이탈 = 이전 구간 마지막 게재 후 미게재 ·
     마지막 구간은 진행 중(잠정) <br>자료:
     <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
     <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a> ·
@@ -1474,7 +1474,7 @@ def dept_flow_chart() -> str:
       annotations: annos,
       hoverlabel: {{ bgcolor: "#FFFFFF", bordercolor: GRID, font: {{ color: INK }} }},
     }};
-    document.getElementById("fl-def").textContent = "유입 = " + N + "편째 게재";
+    document.getElementById("fl-def").textContent = "유입 = 해당 구간 " + N + "편째 게재";
     Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
   }}
 
