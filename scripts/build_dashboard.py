@@ -1253,7 +1253,7 @@ def dept_share_chart() -> str:
     변수 = 구간 폭(4/5년), 핵심 기준(2~5편). 동적 핵심(그 구간까지 누적 N편)."""
     return f"""
 <div class="panel">
-  <h2>핵심 필진의 논문 비중 추이</h2>
+  <h2>핵심 필진의 출신별 논문 비중 추이</h2>
   <div class="panel-bar">
     <div class="ctl"><span class="ctl-label">구간</span>
       <span class="seg" id="seg-sh-w">
