@@ -13,7 +13,7 @@
 
 차트 공통 규격:
   - 조절 변수 1–2개 (버튼 그룹) — 데이터를 페이지에 임베드해 JS 실시간 재계산
-    · 공용 임베드: KSIP_AY(주저자별 연도) · KSIP_AS(+학맥 여부) · KSIP_KCI(핵심 70명 KCI 출판)
+    · 공용 임베드: KSIP_AY(주저자별 연도) · KSIP_AS(+출신 여부) · KSIP_KCI(핵심 70명 KCI 출판)
   - 캡처 버튼: PNG(4배율, 흰 배경) + SVG — 사용자가 조절한 현재 상태 그대로 저장
   - 그래프 아래 원본 데이터 링크(GitHub 파일 페이지, 새 탭) — 설명과 줄바꿈 분리
   - 해석적 설명 없음. 범례·각주는 의미 왜곡을 막는 최소한만.
@@ -1031,7 +1031,7 @@ def stockflow_chart() -> str:
 
 
 def _author_years_sadan() -> list[dict]:
-    """주저자별 발행연도 + 인철과 학맥 여부(동국대 학위자·그 지도교수) — 인도철학과 탭 공용."""
+    """주저자별 발행연도 + 인철과 출신 여부(동국대 학위자·그 지도교수) — 인도철학과 탭 공용."""
     import csv
     from collections import defaultdict
 
@@ -1153,7 +1153,7 @@ def dept_composition_chart() -> str:
       left += w;
     }});
 
-    // 막대 2 아래 브래킷: 학맥 합 / 그 외 합 (핵심 기준과 무관)
+    // 막대 2 아래 브래킷: 출신 합 / 그 외 합 (핵심 기준과 무관)
     const by = YS[1] - H / 2 - 0.14;
     const shapes = [];
     [[0, pPap, "인철과 출신 " + Math.round(pPap) + "% · " + W_S + "편"],
@@ -1172,7 +1172,7 @@ def dept_composition_chart() -> str:
     inLabel(YS[2], pCore / 2, "<b>" + Math.round(pCore) + "% · " + nCoreS + "명</b>", true);
     inLabel(YS[2], pCore + (100 - pCore) / 2, Math.round(100 - pCore) + "% · " + (nCore - nCoreS) + "명", false);
 
-    // 리본: 전체 필진 학맥 → 논문 학맥 (핵심 기준과 무관)
+    // 리본: 전체 필진 출신 → 논문 출신 (핵심 기준과 무관)
     shapes.push({{ type: "path", layer: "below",
       path: "M 0," + (YS[0] - H / 2) + " L " + pAuth + "," + (YS[0] - H / 2)
           + " L " + pPap + "," + (YS[1] + H / 2) + " L 0," + (YS[1] + H / 2) + " Z",
@@ -1200,10 +1200,10 @@ def dept_composition_chart() -> str:
   }}
 
   // ── 호버 연동: 조각 단위 — 그 필진이 쓴 논문 칸(역방향: 그 논문을 쓴 필진 조각)을 강조 ──
-  // t0 필진·학맥  t1 필진·그외 | t2 논문·학맥핵심몫 t3 논문·학맥일회성 t4 논문·그외핵심몫 t5 논문·그외일회성 | t6 핵심·학맥 t7 핵심·그외
+  // t0 필진·출신  t1 필진·그외 | t2 논문·출신핵심몫 t3 논문·출신일회성 t4 논문·그외핵심몫 t5 논문·그외일회성 | t6 핵심·출신 t7 핵심·그외
   const REL = {{ 0: [0, 2, 3], 1: [1, 4, 5], 2: [2, 0, 6], 3: [3, 0],
                4: [4, 1, 7], 5: [5, 1], 6: [6, 2], 7: [7, 4] }};
-  const RIBBON_ON = [0, 2, 3];             // 리본(필진 학맥→논문 학맥)과 연관된 조각
+  const RIBBON_ON = [0, 2, 3];             // 리본(필진 출신→논문 출신)과 연관된 조각
   let nTraces = 0, ribbonIdx = -1, hl;
   function setHighlight(idx) {{
     if (hl === idx) return;
@@ -1478,9 +1478,9 @@ def dept_flow_chart() -> str:
       customdata: vals.map(v => Math.abs(v)),
     }});
     const traces = [
-      bar(C.entG, GOLD, "인철과 학맥", true, "유입"),
+      bar(C.entG, GOLD, "인철과 출신", true, "유입"),
       bar(C.entR, GREY_D, "그 외", true, "유입"),
-      bar(C.exiG.map(v => -v), GOLD, "인철과 학맥", false, "이탈"),
+      bar(C.exiG.map(v => -v), GOLD, "인철과 출신", false, "이탈"),
       bar(C.exiR.map(v => -v), GREY_D, "그 외", false, "이탈"),
       // 증감 선
       {{ type: "scatter", mode: "lines+markers", x: xs.slice(0, prov), y: C.net.slice(0, prov),
