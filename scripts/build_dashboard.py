@@ -1076,7 +1076,7 @@ def dept_composition_chart() -> str:
     """인도철학과 ①: 필진과 논문의 출신 구성 (3막대). 변수 = 핵심 기준(2/3/4/5편)."""
     return f"""
 <div class="panel">
-  <h2>필진과 논문의 출신 구성</h2>
+  <h2>필진의 출신별 구성과 논문의 비중</h2>
   <div class="panel-bar">
     <div class="ctl"><span class="ctl-label">핵심 기준</span>
       <span class="seg" id="seg-comp-n">
@@ -1088,7 +1088,7 @@ def dept_composition_chart() -> str:
   </div>
   <div id="chart-comp"></div>
   <div class="panel-foot">주저자 기준 · 동명이인 분리 ·
-    인철과 학맥 = 동국대 인도철학과 학위자와 그 지도교수 <br>자료:
+    인철과 출신 = 동국대 인도철학과 학위자와 그 지도교수 <br>자료:
     <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/papers.csv">papers.csv</a> ·
     <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/processed/authors.csv">authors.csv</a> ·
     <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/raw/dongguk_indophil_theses.csv">dongguk_indophil_theses.csv</a></div>
@@ -1129,7 +1129,7 @@ def dept_composition_chart() -> str:
     }}
 
     // ── 막대 1: 전체 필진 ──
-    seg(YS[0], 0, pAuth, GOLD, "인철과 학맥 출신");        // t0
+    seg(YS[0], 0, pAuth, GOLD, "인철과 출신");             // t0
     seg(YS[0], pAuth, 100 - pAuth, GREY, "그 외");          // t1
     inLabel(YS[0], pAuth / 2, "<b>" + Math.round(pAuth) + "% · " + A_S + "명</b>", true);
     inLabel(YS[0], pAuth + (100 - pAuth) / 2, Math.round(100 - pAuth) + "% · " + (TOT_A - A_S) + "명", false);
@@ -1156,7 +1156,7 @@ def dept_composition_chart() -> str:
     // 막대 2 아래 브래킷: 학맥 합 / 그 외 합 (핵심 기준과 무관)
     const by = YS[1] - H / 2 - 0.14;
     const shapes = [];
-    [[0, pPap, "인철과 학맥 " + Math.round(pPap) + "% · " + W_S + "편"],
+    [[0, pPap, "인철과 출신 " + Math.round(pPap) + "% · " + W_S + "편"],
      [pPap, 100, "그 외 " + Math.round(100 - pPap) + "% · " + (TOT_W - W_S) + "편"]].forEach(([x0, x1, lab]) => {{
       shapes.push({{ type: "path", layer: "above",
         path: "M " + (x0 + 0.4) + "," + (by + 0.09) + " L " + (x0 + 0.4) + "," + by
