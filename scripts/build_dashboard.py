@@ -1819,12 +1819,7 @@ def kci_activity_chart() -> str:
         else outNm[i].push(p.nm);
       }}
     }});
-    // 밴드용: 그 구간에 "처음" 이탈한 필자만 (한 번 나온 이름은 이후 구간에서 반복하지 않음)
-    const seenOut = new Set();
-    const outNew = Array.from({{ length: nbin }}, () => []);
-    for (let i = 0; i < nbin; i++) outNm[i].forEach(nm => {{
-      if (!seenOut.has(nm)) {{ seenOut.add(nm); outNew[i].push(nm); }} }});
-    return {{ nbin, labels, act, indo, indoNm, outNew,
+    return {{ nbin, labels, act, indo, indoNm, outNm,
              undercov: bin(2000),
              pctOut: act.map((a, i) => a ? Math.round(100 * (a - indo[i]) / a) : 0) }};
   }}
@@ -1919,19 +1914,18 @@ def kci_activity_chart() -> str:
 
   const box = document.getElementById("ka-names");
   const HINT = '<span class="nb-hint"><b style="color:' + GOLD + '">금색 꼭지점</b>'
-    + '(그 구간 『인도철학』 게재 필자) 또는 <b>음영 밴드</b>(그 구간에 새로 이탈한 필자)에 '
+    + '(그 구간 『인도철학』 게재 필자) 또는 <b>음영 밴드</b>(그 구간 인도철학 밖에서만 활동한 필자)에 '
     + '마우스를 올리면 해당 필자 이름이 여기에 나열됩니다.</span>';
   function resetNames() {{ box.innerHTML = HINT; }}
   function showNames(kind, bi) {{
     if (!lastC) return;
-    const names = (kind === "indo" ? lastC.indoNm[bi] : lastC.outNew[bi]).slice()
+    const names = (kind === "indo" ? lastC.indoNm[bi] : lastC.outNm[bi]).slice()
       .sort((a, b) => a.localeCompare(b, "ko"));
-    const head = kind === "indo"
-      ? '<span style="color:' + GOLD + '">『인도철학』 게재</span> · ' + names.length + '명'
-      : '<span style="color:' + MUTED + '">인도철학 밖에서만 활동</span> · 새로 이탈 '
-        + names.length + '명 <span class="nb-hint">(이전 구간에 나온 이름은 반복하지 않음)</span>';
+    const label = kind === "indo" ? "『인도철학』 게재" : "인도철학 밖에서만 활동";
+    const color = kind === "indo" ? GOLD : MUTED;
     box.innerHTML =
-      '<div class="nb-head"><b>' + lastC.labels[bi] + '</b> · ' + head + '</div>'
+      '<div class="nb-head"><b>' + lastC.labels[bi] + '</b> · <span style="color:' + color
+      + '">' + label + '</span> · ' + names.length + '명</div>'
       + '<div class="nb-names">' + (names.join(", ") || "없음") + '</div>';
   }}
   function wireHover() {{
