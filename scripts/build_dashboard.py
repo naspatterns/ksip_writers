@@ -178,6 +178,7 @@ def overview_chart() -> str:
   const D = {data_js};
   const INK = "{INK}", MUTED = "{MUTED}", GRID = "{GRID}", BARBG = "{BARBG}";
   const HIATUS = [1990, 1991];
+  const YMAX = 44;                              // 논문 원본 y축 상한
   const gd = document.getElementById("chart-overview");
   let binw = 4, range = "all";
 
@@ -235,6 +236,14 @@ def overview_chart() -> str:
     }}
     const avg = cnt ? sum / cnt : 0;
 
+    // 휴간 밴드: 막대 위·평균선 아래 (트레이스 순서로 z 제어)
+    traces.push({{
+      type: "scatter", mode: "lines",
+      x: [1989.5, 1991.5], y: [YMAX, YMAX],
+      fill: "tozeroy", fillcolor: "rgba(205,199,184,0.45)",
+      line: {{ width: 0 }},
+      hoverinfo: "skip", showlegend: false,
+    }});
     // 평균선: 막대 위·연도선 아래 (트레이스 순서로 z 제어)
     traces.push({{
       type: "scatter", mode: "lines",
@@ -261,12 +270,7 @@ def overview_chart() -> str:
       if (tickvals.length > 16) tickangle = -90;
     }}
 
-    const shapes = [
-      // 휴간 밴드
-      {{ type: "rect", x0: 1989.5, x1: 1991.5, y0: 0, y1: 1,
-        xref: "x", yref: "paper", fillcolor: "rgba(205,199,184,0.3)",
-        line: {{ width: 0 }}, layer: "below" }},
-    ];
+    const shapes = [];
     const annos = [
       {{ x: xr[1] - 0.3, y: avg, xref: "x", yref: "y",
         xanchor: "right", yshift: 10, showarrow: false,
@@ -275,8 +279,8 @@ def overview_chart() -> str:
         font: {{ color: INK, size: 11.5 }} }},
     ];
     if (xr[0] < 1991.5) {{
-      annos.push({{ x: 1990.5, y: 0.5, xref: "x", yref: "y",
-        yanchor: "bottom", showarrow: false, text: "휴간<br>1990–91",
+      annos.push({{ x: 1990.5, y: YMAX - 1.5, xref: "x", yref: "y",
+        yanchor: "top", showarrow: false, text: "휴간<br>1990–91",
         font: {{ color: MUTED, size: 10.5 }} }});
     }}
 
@@ -294,7 +298,7 @@ def overview_chart() -> str:
               tickvals: tickvals, ticktext: ticktext, tickangle: tickangle,
               tickfont: {{ color: MUTED, size: binw > 0 ? 12 : 11 }} }},
       yaxis: {{ gridcolor: GRID, zeroline: false, tickfont: {{ color: MUTED }},
-              rangemode: "tozero" }},
+              range: [0, YMAX], tickvals: [0, 10, 20, 30, 40] }},
       shapes: shapes,
       annotations: annos,
     }};
