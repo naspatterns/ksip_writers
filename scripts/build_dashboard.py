@@ -103,12 +103,56 @@ CSS = f"""
 """
 
 
+# 가로 범례가 좁은 폭에서 줄바꿈 대신 오버플로우해 글자가 잘리는 문제를 막는 공용 헬퍼.
+# 각 차트의 한 줄 범례 폭을 실측해 필요한 줄 수를 구하고, 상단 여백을 늘려 Plotly가
+# 줄바꿈할 공간을 준다. plotly_afterplot마다 실행하되 (폭, 줄 수) 키로 중복을 막아 무한 루프 방지.
+LEGEND_FIT_JS = """
+<script>
+window.addEventListener("load", function () {
+  function rowsNeeded(gd) {
+    var leg = gd.querySelector(".legend");
+    if (!leg) return 1;
+    var items = leg.querySelectorAll(".traces");
+    if (items.length < 2) return 1;
+    var sum = 0;
+    for (var i = 0; i < items.length; i++) sum += items[i].getBoundingClientRect().width + 16;
+    var fl = gd._fullLayout;
+    var plotW = fl ? (fl.width - fl.margin.l - fl.margin.r) : gd.clientWidth;
+    return Math.min(3, Math.max(1, Math.ceil(sum / Math.max(plotW, 60))));
+  }
+  function fit(gd) {
+    if (gd.__baseTop == null) gd.__baseTop = (gd.layout && gd.layout.margin && gd.layout.margin.t) || 30;
+    var rows = rowsNeeded(gd);
+    var key = Math.round(gd.clientWidth) + ":" + rows;
+    if (gd.__fitKey === key) return;
+    gd.__fitKey = key;
+    var want = gd.__baseTop + (rows - 1) * 30;
+    var cur = gd._fullLayout && gd._fullLayout.margin.t;
+    if (cur != null && Math.abs(cur - want) > 1) Plotly.relayout(gd, { "margin.t": want });
+  }
+  function attach(gd) {
+    if (gd.__fitWired) return;
+    gd.__fitWired = true;
+    if (gd.on) gd.on("plotly_afterplot", function () { fit(gd); });
+    fit(gd);
+  }
+  function scan() {
+    document.querySelectorAll(".js-plotly-plot").forEach(attach);
+  }
+  scan();
+  new MutationObserver(scan).observe(document.body, { subtree: true, childList: true });
+});
+</script>
+"""
+
+
 def page(slug: str, title: str, content: str, *, plotly: bool = False) -> str:
     nav = "\n".join(
         f'      <a href="{s}"{" class=\"on\"" if s == slug else ""}>{t}</a>'
         for s, t in PAGES)
     plotly_tag = ('<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" '
                   'charset="utf-8"></script>' if plotly else "")
+    legend_fit = LEGEND_FIT_JS if plotly else ""
     return f"""<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -136,6 +180,7 @@ def page(slug: str, title: str, content: str, *, plotly: bool = False) -> str:
   </div>
   <footer>자료: KCI(한국학술지인용색인) · 동국대학교 dCollection —
     원본 데이터와 수집·가공 과정은 <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/README.md">data/README.md</a> 참조</footer>
+{legend_fit}
 </body>
 </html>
 """
