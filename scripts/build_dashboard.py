@@ -2107,7 +2107,8 @@ def devotion_chart() -> str:
   function resetNames() {{ box.innerHTML = HINT; }}
   function showNames(bi) {{
     if (!lastC) return;
-    const list = lastC.dev[bi].slice().sort((a, b) => a[0].localeCompare(b[0], "ko"));
+    const list = lastC.dev[bi].slice()
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"));   // 헌신도 내림차순, 동률은 가나다순
     box.innerHTML =
       '<div class="nb-head"><b>' + lastC.labels[bi] + '</b> · <span style="color:' + GOLD
       + '">『인도철학』 게재</span> · ' + list.length + '명 · 평균 ' + lastC.avg[bi] + '%</div>'
