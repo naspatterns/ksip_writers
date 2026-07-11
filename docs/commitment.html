@@ -277,7 +277,7 @@
     const traces = [
       { type: "scatter", mode: "lines", x: xs, y: C.indo, showlegend: false,
         line: { width: 0 }, hoverinfo: "skip" },
-      { type: "scatter", mode: "lines", x: xs, y: C.act, name: "『인도철학』 밖에서만 활동",
+      { type: "scatter", mode: "lines", x: xs, y: C.act, showlegend: false,
         fill: "tonexty", fillcolor: "rgba(205,199,184,0.6)",
         line: { width: 0 }, hoverinfo: "skip" },
       { type: "scatter", mode: "lines+markers", x: xs.slice(0, prov), y: C.act.slice(0, prov),
@@ -315,6 +315,15 @@
     annos.push({ x: xs[Math.max(1, Math.floor(C.undercov / 2))], y: yMax * 0.94,
       yref: "y", text: "KCI 초기 미커버(밖=0 인공값)", showarrow: false,
       font: { color: MUTED, size: 10.5 } });
+    // 음영 밴드(『인도철학』 밖에서만 활동) 화살표 라벨 — 정적 그림과 동일, 밴드 가장 넓은 확정 구간을 가리킴
+    const gaps = C.act.map((a, i) => a - C.indo[i]);
+    let bb = -1, bbG = 3;
+    for (let i = C.undercov + 1; i <= C.nbin - 3; i++) { if (gaps[i] > bbG) { bbG = gaps[i]; bb = i; } }
+    if (bb >= 0) annos.push({ x: xs[bb], y: (C.act[bb] + C.indo[bb]) / 2, yref: "y",
+      ax: -48, ay: -52, text: "인도철학 밖에서만 활동", showarrow: true,
+      arrowhead: 2, arrowsize: 1, arrowwidth: 1, arrowcolor: MUTED,
+      bgcolor: "rgba(255,255,255,0.8)", borderpad: 1,
+      font: { color: MUTED, size: SM ? 9.5 : 11 } });
     const layout = {
       paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
       font: { family: "'Noto Sans KR', sans-serif", color: INK, size: 14 },
