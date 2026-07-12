@@ -148,6 +148,33 @@ CSS = f"""
   }}
 """
 
+# 모바일 터치 공용 헬퍼: Plotly가 드래그 레이어의 touchstart에서 preventDefault로
+# 페이지 스크롤을 막는다(실측: defaultPrevented=true). 캡처 단계에서 그 touchstart를
+# 가로채 세로 스와이프는 브라우저 네이티브 스크롤에 맡기고, 탭(이동<12px·<600ms)만
+# mousemove로 변환해 Plotly 호버 파이프라인(툴팁·이름 박스)을 그대로 태운다.
+TOUCH_SCROLL_JS = """
+<script>
+(function () {
+  var t0 = null;
+  document.addEventListener("touchstart", function (e) {
+    if (!e.target.closest || !e.target.closest(".draglayer")) return;
+    e.stopPropagation();                       // Plotly의 preventDefault 차단 → 스크롤 허용
+    var t = e.touches[0];
+    t0 = { x: t.clientX, y: t.clientY, at: Date.now() };
+  }, true);
+  document.addEventListener("touchend", function (e) {
+    if (!t0 || !e.target.closest || !e.target.closest(".draglayer")) { t0 = null; return; }
+    var t = e.changedTouches[0];
+    var tap = Math.hypot(t.clientX - t0.x, t.clientY - t0.y) < 12 && Date.now() - t0.at < 600;
+    t0 = null;
+    if (!tap) return;
+    e.target.dispatchEvent(new MouseEvent("mousemove",
+      { clientX: t.clientX, clientY: t.clientY, bubbles: true }));
+  }, true);
+})();
+</script>
+"""
+
 # 가로 범례가 좁은 폭에서 줄바꿈 대신 오버플로우해 글자가 잘리는 문제를 막는 공용 헬퍼.
 # 각 차트의 한 줄 범례 폭을 실측해 필요한 줄 수를 구하고, 상단 여백을 늘려 Plotly가
 # 줄바꿈할 공간을 준다. plotly_afterplot마다 실행하되 (폭, 줄 수) 키로 중복을 막아 무한 루프 방지.
@@ -197,7 +224,7 @@ def page(slug: str, title: str, content: str, *, plotly: bool = False) -> str:
         for s, t in PAGES)
     plotly_tag = ('<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" '
                   'charset="utf-8"></script>' if plotly else "")
-    legend_fit = LEGEND_FIT_JS if plotly else ""
+    legend_fit = (TOUCH_SCROLL_JS + LEGEND_FIT_JS) if plotly else ""
     return f"""<!DOCTYPE html>
 <html lang="ko">
 <head>

@@ -691,6 +691,27 @@
     원본 데이터와 수집·가공 과정은 <a target="_blank" rel="noopener" href="https://github.com/naspatterns/ksip_writers/blob/main/data/README.md">data/README.md</a> 참조</footer>
 
 <script>
+(function () {
+  var t0 = null;
+  document.addEventListener("touchstart", function (e) {
+    if (!e.target.closest || !e.target.closest(".draglayer")) return;
+    e.stopPropagation();                       // Plotly의 preventDefault 차단 → 스크롤 허용
+    var t = e.touches[0];
+    t0 = { x: t.clientX, y: t.clientY, at: Date.now() };
+  }, true);
+  document.addEventListener("touchend", function (e) {
+    if (!t0 || !e.target.closest || !e.target.closest(".draglayer")) { t0 = null; return; }
+    var t = e.changedTouches[0];
+    var tap = Math.hypot(t.clientX - t0.x, t.clientY - t0.y) < 12 && Date.now() - t0.at < 600;
+    t0 = null;
+    if (!tap) return;
+    e.target.dispatchEvent(new MouseEvent("mousemove",
+      { clientX: t.clientX, clientY: t.clientY, bubbles: true }));
+  }, true);
+})();
+</script>
+
+<script>
 window.addEventListener("load", function () {
   function rowsNeeded(gd) {
     var leg = gd.querySelector(".legend");
