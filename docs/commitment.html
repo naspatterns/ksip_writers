@@ -11,6 +11,7 @@
   :root { --ink:#1C1B19; --gold:#B8911F; --muted:#6E675C; --grid:#E4E2DA; --paper:#FAF9F5; --barbg:#EFE9DA;
           --ink-deep:#131211; --gold-soft:#C89B24; --gold-deep:#8A6D17; }
   * { box-sizing:border-box; margin:0; }
+  html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }  /* iOS 가로모드 텍스트 자동확대 방지 */
   body { background:var(--paper); color:var(--ink); font-family:'Noto Sans KR',sans-serif;
          line-height:1.7; -webkit-font-smoothing:antialiased; }
   a { color:var(--ink); }
@@ -710,18 +711,23 @@
       { clientX: t.clientX, clientY: t.clientY, bubbles: true }));
   }, true);
 
-  // 화면 회전 직후 Plotly가 낡은 치수로 그려져 패널을 넘치는 문제 —
-  // 회전·리사이즈가 끝난 뒤 전체 차트를 다시 측정한다. 이벤트를 놓치는 경우에
-  // 대비해 콘텐츠 영역(main)의 실측 폭 변화도 ResizeObserver로 감시한다.
+  // 화면 회전 직후 Plotly가 낡은/0 치수로 그려져 레이아웃이 무너지는 문제 —
+  // ① 첫 렌더 후 차트 div의 흐름 높이를 고정(내부가 무너져도 아래 텍스트가 침범 못 함)
+  // ② 회전·리사이즈가 끝난 뒤 전체 차트 재측정(2회: 늦게 안정되는 치수 대비)
+  // ③ 이벤트를 놓치는 경우 대비, 콘텐츠 영역(main) 폭 변화를 ResizeObserver로 감시
   var rz;
   function refit() {
     document.querySelectorAll(".js-plotly-plot").forEach(function (gd) {
-      if (gd._fullLayout) Plotly.Plots.resize(gd);
+      if (gd._fullLayout && gd.offsetWidth > 50) Plotly.Plots.resize(gd);
     });
   }
-  function queueRefit(ms) { clearTimeout(rz); rz = setTimeout(refit, ms); }
+  function queueRefit(ms) {
+    clearTimeout(rz);
+    rz = setTimeout(function () { refit(); setTimeout(refit, 500); }, ms);
+  }
   window.addEventListener("resize", function () { queueRefit(250); });
   window.addEventListener("orientationchange", function () { queueRefit(400); });
+  window.addEventListener("pageshow", function () { queueRefit(150); });
   if (window.ResizeObserver) {
     var mainEl = document.querySelector("main");
     if (mainEl) {
@@ -732,6 +738,13 @@
       }).observe(mainEl);
     }
   }
+  window.addEventListener("load", function () {
+    setTimeout(function () {
+      document.querySelectorAll(".js-plotly-plot").forEach(function (gd) {
+        if (gd.offsetHeight > 100) gd.style.height = gd.offsetHeight + "px";
+      });
+    }, 400);
+  });
 })();
 </script>
 
