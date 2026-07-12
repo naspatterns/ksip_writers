@@ -283,7 +283,9 @@ def page(slug: str, title: str, content: str, *, plotly: bool = False) -> str:
     nav = "\n".join(
         f'      <a href="{s}"{" class=\"on\"" if s == slug else ""}>{t}</a>'
         for s, t in PAGES)
-    plotly_tag = ('<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" '
+    # basic 번들 = scatter+bar+pie만(우리 차트 전부 scatter/bar) → 전송 1.33MB→355KB.
+    # 롤백: 아래 URL을 plotly-2.35.2.min.js로 되돌리면 됨.
+    plotly_tag = ('<script src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js" '
                   'charset="utf-8"></script>' if plotly else "")
     legend_fit = (TOUCH_SCROLL_JS + LEGEND_FIT_JS) if plotly else ""
     return f"""<!DOCTYPE html>
