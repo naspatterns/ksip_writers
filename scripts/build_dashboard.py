@@ -121,6 +121,11 @@ CSS = f"""
   .names-box .nb-head {{ font-size:.8rem; margin-bottom:5px; }}
   .names-box .nb-names {{ color:var(--ink); line-height:1.75; }}
   .names-box .nb-hint {{ color:var(--muted); }}
+  .names-box.pulse {{ animation:nbPulse .6s ease-out; }}
+  @keyframes nbPulse {{
+    0% {{ box-shadow:0 0 0 0 rgba(184,145,31,.55); border-color:var(--gold); }}
+    100% {{ box-shadow:0 0 0 10px rgba(184,145,31,0); border-color:var(--grid); }}
+  }}
   .pending {{ color:var(--muted); padding:48px 0; text-align:center; }}
 
   /* 풋터 — 뒤표지: 자료 출처가 다크 위에서 도드라짐 */
@@ -135,10 +140,13 @@ CSS = f"""
     .banner-text {{ padding:22px 16px 18px; }}
     .banner .en {{ display:none; }}
     .frame {{ flex-direction:column; }}
-    nav {{ width:auto; display:flex; padding:10px 16px 0; border-bottom:1px solid var(--grid); }}
-    nav a {{ border-left:0; border-bottom:2px solid transparent; padding:8px 12px; }}
+    nav {{ width:auto; display:flex; flex-wrap:wrap; padding:6px 16px 0; border-bottom:1px solid var(--grid); }}
+    nav a {{ border-left:0; border-bottom:2px solid transparent; padding:11px 13px; }}
     nav a.on {{ border-bottom-color:var(--gold); }}
     main {{ padding:20px 16px 48px; }}
+    /* 터치 타깃 확대(~44px): 대시보드에서 가장 많이 조작하는 UI */
+    .seg button {{ padding:10px 14px; }}
+    .dl button {{ padding:10px 14px; }}
   }}
 
   @media print {{
@@ -201,10 +209,26 @@ TOUCH_SCROLL_JS = """
       }).observe(mainEl);
     }
   }
+  // 터치 기기에서 꼭지점을 탭해 이름 박스가 갱신되면 골드 펄스로 알림(화면 아래라 놓치기 쉬움).
+  // 힌트로 리셋될 때(.nb-head 없음)는 펄스하지 않음. 데스크톱(hover 가능)은 펄스 안 함.
+  var TOUCHY = window.matchMedia && matchMedia("(hover: none), (pointer: coarse)").matches;
+  if (TOUCHY && window.MutationObserver) {
+    window.addEventListener("load", function () {
+      document.querySelectorAll(".names-box").forEach(function (box) {
+        new MutationObserver(function () {
+          if (!box.querySelector(".nb-head")) return;
+          box.classList.remove("pulse"); void box.offsetWidth; box.classList.add("pulse");
+        }).observe(box, { childList: true });
+      });
+    });
+  }
+
+  // 흐름 높이 하한(floor)만 고정 — 회전 중 내부 붕괴는 막되, 높이가 커지는 차트
+  // (상위 필자 10/20/30명 = 310/570/830px)는 자라날 수 있게 minHeight 사용.
   window.addEventListener("load", function () {
     setTimeout(function () {
       document.querySelectorAll(".js-plotly-plot").forEach(function (gd) {
-        if (gd.offsetHeight > 100) gd.style.height = gd.offsetHeight + "px";
+        if (gd.offsetHeight > 100 && !gd.style.minHeight) gd.style.minHeight = gd.offsetHeight + "px";
       });
     }, 400);
   });
@@ -269,6 +293,8 @@ def page(slug: str, title: str, content: str, *, plotly: bool = False) -> str:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title} — &lt;인도철학&gt;은 왜 점점 얇아지고 있는가?</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.plot.ly">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet">
 {plotly_tag}
 <style>{CSS}</style>
@@ -427,6 +453,8 @@ def overview_chart() -> str:
       ticktext = tickvals.map(String);
       if (tickvals.length > 16) tickangle = -90;
     }}
+    const NARROW = gd.clientWidth < 560;          // 좁은 화면 → 라벨 회전(겹침 방지)
+    if (tickangle === 0 && NARROW) tickangle = -45;
 
     const shapes = [];
     const annos = [
@@ -445,7 +473,7 @@ def overview_chart() -> str:
     const layout = {{
       paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
       font: {{ family: "'Noto Sans KR', sans-serif", color: INK, size: 14 }},
-      margin: {{ l: 40, r: 16, t: 8, b: binw > 0 ? 36 : 52 }}, height: 420,
+      margin: {{ l: 40, r: 16, t: 8, b: tickangle !== 0 ? 54 : 36 }}, height: 420,
       hovermode: "x unified",
       hoverlabel: {{ bgcolor: "#FFFFFF", bordercolor: GRID, font: {{ color: INK }} }},
       showlegend: binw > 0,
@@ -454,7 +482,7 @@ def overview_chart() -> str:
       bargap: 0,
       xaxis: {{ showgrid: false, zeroline: false, range: xr,
               tickvals: tickvals, ticktext: ticktext, tickangle: tickangle,
-              tickfont: {{ color: MUTED, size: binw > 0 ? 12 : 11 }} }},
+              tickfont: {{ color: MUTED, size: NARROW ? 10 : (binw > 0 ? 12 : 11) }} }},
       yaxis: {{ gridcolor: GRID, zeroline: false, tickfont: {{ color: MUTED }},
               range: [0, YMAX], tickvals: [0, 10, 20, 30, 40] }},
       shapes: shapes,
@@ -750,6 +778,7 @@ def top_authors_chart() -> str:
       hoverlabel: {{ bgcolor: "#FFFFFF", bordercolor: GRID, font: {{ color: INK }} }},
     }};
     Plotly.react(gd, traces, layout, {{ displayModeBar: false, responsive: true }});
+    gd.style.minHeight = chartHeight() + "px";   // 인원 변경 시 흐름 높이도 동적 추적(잘림·공백 방지)
   }}
 
   document.getElementById("seg-top-n").addEventListener("click", e => {{
@@ -875,7 +904,7 @@ def activity_chart() -> str:
 
   function render() {{
     const C = compute();
-    const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
+    const SM = C.nbin > 10 || gd.clientWidth < 560;   // 촘촘한 구간(2·3년) OR 좁은 화면 → 라벨 회전·축소
     const prov = C.nbin - 1;               // 마지막 구간 = 잠정
     const xs = C.labels;
     const provOp = i => i === prov ? 0.5 : 1;
@@ -1057,7 +1086,7 @@ def stockflow_chart() -> str:
   function render() {{
     const C = compute();
     lastC = C;
-    const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
+    const SM = C.nbin > 10 || gd.clientWidth < 560;   // 촘촘한 구간(2·3년) OR 좁은 화면 → 라벨 회전·축소
     const prov = C.nbin - 1;
     const xs = C.labels;
     const provOp = i => i === prov ? 0.5 : 1;
@@ -1128,7 +1157,7 @@ def stockflow_chart() -> str:
 
   const box = document.getElementById("sf-names");
   const HINT = '<span class="nb-hint"><b>유입</b>·<b style="color:' + RUST + '">이탈</b> '
-    + '꼭지점에 마우스를 올리면 그 수치에 집계된 필자 이름이 여기에 나열됩니다.</span>';
+    + '꼭지점을 누르면 그 수치에 집계된 필자 이름이 여기에 나열됩니다.</span>';
   function resetNames() {{ box.innerHTML = HINT; }}
   function showNames(kind, bi) {{
     if (!lastC) return;
@@ -1502,7 +1531,7 @@ def dept_share_chart() -> str:
   function render() {{
     const C = compute();
     lastC = C;
-    const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
+    const SM = C.nbin > 10 || gd.clientWidth < 560;   // 촘촘한 구간(2·3년) OR 좁은 화면 → 라벨 회전·축소
     const prov = C.nbin - 1, xs = C.labels;
     const traces = [
       ...lineTraces(xs, C.tpct, prov, GREY_TOT, "circle", "핵심 필진 전체", 1.8, 5),
@@ -1545,7 +1574,7 @@ def dept_share_chart() -> str:
   }}
 
   const box = document.getElementById("sh-names");
-  const HINT = '<span class="nb-hint">각 선의 꼭지점에 마우스를 올리면 그 수치에 집계된 '
+  const HINT = '<span class="nb-hint">각 선의 꼭지점을 누르면 그 수치에 집계된 '
     + '핵심 필자와 그 구간 게재 편수가 여기에 나열됩니다.</span>';
   function resetNames() {{ box.innerHTML = HINT; }}
   function showNames(kind, bi) {{
@@ -1683,7 +1712,7 @@ def dept_flow_chart() -> str:
   function render() {{
     const C = compute();
     lastC = C;
-    const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
+    const SM = C.nbin > 10 || gd.clientWidth < 560;   // 촘촘한 구간(2·3년) OR 좁은 화면 → 라벨 회전·축소
     const prov = C.nbin - 1, xs = C.labels;
     const provOp = i => i === prov ? 0.5 : 1;
     const pat = {{ shape: xs.map((_, i) => i === prov ? "/" : ""),
@@ -1747,7 +1776,7 @@ def dept_flow_chart() -> str:
   }}
 
   const box = document.getElementById("fl-names");
-  const HINT = '<span class="nb-hint">막대의 각 조각에 마우스를 올리면 '
+  const HINT = '<span class="nb-hint">막대의 각 조각을 누르면 '
     + '그 조각에 집계된 필자 이름이 여기에 나열됩니다.</span>';
   function resetNames() {{ box.innerHTML = HINT; }}
   const KEYLAB = {{ entG: ["유입", "인철과 출신", GOLD], entR: ["유입", "비인철과 출신", MUTED],
@@ -1925,7 +1954,7 @@ def debut_chart() -> str:
   function render() {{
     const C = compute();
     lastC = C;
-    const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
+    const SM = C.nbin > 10 || gd.clientWidth < 560;   // 촘촘한 구간(2·3년) OR 좁은 화면 → 라벨 회전·축소
     const prov = C.nbin - 2, xs = C.labels;            // 마지막 두 코호트 = 잠정
     const pat = i => i >= prov ? "/" : "";
     const traces = [
@@ -1977,7 +2006,7 @@ def debut_chart() -> str:
   }}
 
   const box = document.getElementById("db-names");
-  const HINT = '<span class="nb-hint"><b>꼭지점</b>(일회성 비율)에 마우스를 올리면 '
+  const HINT = '<span class="nb-hint"><b>꼭지점</b>(일회성 비율)을 누르면 '
     + '그 코호트의 일회성 필자 이름이 여기에 나열됩니다.</span>';
   function resetNames() {{ box.innerHTML = HINT; }}
   function showNames(bi) {{
@@ -2107,7 +2136,7 @@ def kci_activity_chart() -> str:
   function render() {{
     const C = compute();
     lastC = C;
-    const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
+    const SM = C.nbin > 10 || gd.clientWidth < 560;   // 촘촘한 구간(2·3년) OR 좁은 화면 → 라벨 회전·축소
     const prov = C.nbin - 1, xs = C.labels;
     const yMax = Math.max.apply(null, C.act) * 1.22;
     const traces = [
@@ -2205,8 +2234,8 @@ def kci_activity_chart() -> str:
 
   const box = document.getElementById("ka-names");
   const HINT = '<span class="nb-hint"><b style="color:' + GOLD + '">금색 꼭지점</b>'
-    + '(그 구간 『인도철학』 게재 필자) 또는 <b>음영 밴드</b>(그 구간 인도철학 밖에서만 활동한 필자)에 '
-    + '마우스를 올리면 해당 필자 이름이 여기에 나열됩니다.</span>';
+    + '(그 구간 『인도철학』 게재 필자) 또는 <b>음영 밴드</b>(그 구간 인도철학 밖에서만 활동한 필자)를 '
+    + '누르면 해당 필자 이름이 여기에 나열됩니다.</span>';
   function resetNames() {{ box.innerHTML = HINT; }}
   function showNames(kind, bi) {{
     if (!lastC) return;
@@ -2343,7 +2372,7 @@ def devotion_chart() -> str:
   function render() {{
     const C = compute();
     lastC = C;
-    const SM = C.nbin > 10;                // 촘촘한 구간(2·3년) → 라벨 축소
+    const SM = C.nbin > 10 || gd.clientWidth < 560;   // 촘촘한 구간(2·3년) OR 좁은 화면 → 라벨 회전·축소
     const prov = C.nbin - 1, xs = C.labels;
     let S = 0;
     while (S < C.nbin && C.ncon[S] === 0) S++;
@@ -2394,8 +2423,8 @@ def devotion_chart() -> str:
   }}
 
   const box = document.getElementById("dv-names");
-  const HINT = '<span class="nb-hint"><b style="color:' + GOLD + '">금색 꼭지점</b>에 '
-    + '마우스를 올리면 그 구간 『인도철학』 게재 필자와 각자의 헌신도(%)가 여기에 나열됩니다.</span>';
+  const HINT = '<span class="nb-hint"><b style="color:' + GOLD + '">금색 꼭지점</b>을 '
+    + '누르면 그 구간 『인도철학』 게재 필자와 각자의 헌신도(%)가 여기에 나열됩니다.</span>';
   function resetNames() {{ box.innerHTML = HINT; }}
   function showNames(bi) {{
     if (!lastC) return;
