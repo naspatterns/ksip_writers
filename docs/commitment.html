@@ -38,7 +38,8 @@
   main { flex:1; min-width:0; padding:28px 32px 64px; max-width:1000px; }
 
   /* 차트 패널 */
-  .panel { background:#fff; border:1px solid var(--grid); border-radius:12px; padding:22px 24px; margin-bottom:28px; }
+  .panel { background:#fff; border:1px solid var(--grid); border-radius:12px; padding:22px 24px;
+           margin-bottom:28px; overflow:hidden; }
   .panel h2 { font-family:'Noto Serif KR',serif; font-size:1.12rem; margin-bottom:0; }
   .panel h2::after { content:""; display:block; width:26px; height:2px;
                      background:var(--gold); margin:8px 0 2px; }
@@ -708,6 +709,29 @@
     e.target.dispatchEvent(new MouseEvent("mousemove",
       { clientX: t.clientX, clientY: t.clientY, bubbles: true }));
   }, true);
+
+  // 화면 회전 직후 Plotly가 낡은 치수로 그려져 패널을 넘치는 문제 —
+  // 회전·리사이즈가 끝난 뒤 전체 차트를 다시 측정한다. 이벤트를 놓치는 경우에
+  // 대비해 콘텐츠 영역(main)의 실측 폭 변화도 ResizeObserver로 감시한다.
+  var rz;
+  function refit() {
+    document.querySelectorAll(".js-plotly-plot").forEach(function (gd) {
+      if (gd._fullLayout) Plotly.Plots.resize(gd);
+    });
+  }
+  function queueRefit(ms) { clearTimeout(rz); rz = setTimeout(refit, ms); }
+  window.addEventListener("resize", function () { queueRefit(250); });
+  window.addEventListener("orientationchange", function () { queueRefit(400); });
+  if (window.ResizeObserver) {
+    var mainEl = document.querySelector("main");
+    if (mainEl) {
+      var mw = mainEl.getBoundingClientRect().width;
+      new ResizeObserver(function () {
+        var w = mainEl.getBoundingClientRect().width;
+        if (Math.abs(w - mw) > 1) { mw = w; queueRefit(200); }
+      }).observe(mainEl);
+    }
+  }
 })();
 </script>
 
