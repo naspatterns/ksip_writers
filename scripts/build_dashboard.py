@@ -1077,14 +1077,16 @@ def stockflow_chart() -> str:
       + '<div class="nb-names">' + (names.join(", ") || "없음") + '</div>';
   }}
   function wireHover() {{
-    gd.on("plotly_hover", function (ev) {{
+    const onPt = function (ev) {{
       const pt = ev.points && ev.points[0];
       if (!pt || !lastC) return;
       const nm = (pt.data && pt.data.name) || "";
       if (nm !== "유입" && nm !== "이탈") return;
       const bi = lastC.labels.indexOf(pt.x);
       if (bi >= 0) showNames(nm, bi);
-    }});
+    }};
+    gd.on("plotly_hover", onPt);
+    gd.on("plotly_click", onPt);   // 모바일: 탭
   }}
 
   function segWire(id, fn) {{
@@ -1499,7 +1501,7 @@ def dept_share_chart() -> str:
       + '</div>';
   }}
   function wireHover() {{
-    gd.on("plotly_hover", function (ev) {{
+    const onPt = function (ev) {{
       const pt = ev.points && ev.points[0];
       if (!pt || !lastC) return;
       const nm = (pt.data && pt.data.name) || "";
@@ -1510,7 +1512,9 @@ def dept_share_chart() -> str:
       if (!kind) return;
       const bi = lastC.labels.indexOf(pt.x);
       if (bi >= 0) showNames(kind, bi);
-    }});
+    }};
+    gd.on("plotly_hover", onPt);
+    gd.on("plotly_click", onPt);   // 모바일: 탭
   }}
 
   function segWire(id, fn) {{
@@ -1694,14 +1698,16 @@ def dept_flow_chart() -> str:
       + '<div class="nb-names">' + (names.join(", ") || "없음") + '</div>';
   }}
   function wireHover() {{
-    gd.on("plotly_hover", function (ev) {{
+    const onPt = function (ev) {{
       const pt = ev.points && ev.points[0];
       if (!pt || !lastC) return;
       const key = pt.data && pt.data.meta;
       if (!key || !lastC.nm[key]) return;
       const bi = lastC.labels.indexOf(pt.x);
       if (bi >= 0) showNames(key, bi);
-    }});
+    }};
+    gd.on("plotly_hover", onPt);
+    gd.on("plotly_click", onPt);   // 모바일: 탭
   }}
 
   function segWire(id, fn) {{
@@ -1920,14 +1926,16 @@ def debut_chart() -> str:
       + '<div class="nb-names">' + (names.join(", ") || "없음") + '</div>';
   }}
   function wireHover() {{
-    gd.on("plotly_hover", function (ev) {{
+    const onPt = function (ev) {{
       const pt = ev.points && ev.points[0];
       if (!pt || !lastC) return;
       const nm = (pt.data && pt.data.name) || "";
       if (nm.indexOf("일회성") !== 0) return;
       const bi = lastC.labels.indexOf(pt.x);
       if (bi >= 0) showNames(bi);
-    }});
+    }};
+    gd.on("plotly_hover", onPt);
+    gd.on("plotly_click", onPt);   // 모바일: 탭
   }}
 
   function segWire(id, fn) {{
@@ -2150,7 +2158,7 @@ def kci_activity_chart() -> str:
       + '<div class="nb-names">' + (names.join(", ") || "없음") + '</div>';
   }}
   function wireHover() {{
-    gd.on("plotly_hover", function (ev) {{
+    const onPt = function (ev) {{
       const pt = ev.points && ev.points[0];
       if (!pt || !lastC) return;
       const nm = (pt.data && pt.data.name) || "";
@@ -2163,7 +2171,9 @@ def kci_activity_chart() -> str:
       if (!kind) return;
       if (kind === "indo" && lastC.act[bi] === 0) return;   // 자료 없는 구간(0/0)은 무시
       showNames(kind, bi);
-    }});
+    }};
+    gd.on("plotly_hover", onPt);
+    gd.on("plotly_click", onPt);   // 모바일: 탭
   }}
 
   function segWire(id, fn) {{
@@ -2333,12 +2343,14 @@ def devotion_chart() -> str:
       + '<div class="nb-names">' + (list.map(p => p[0] + "(" + p[1] + "%)").join(", ") || "없음") + '</div>';
   }}
   function wireHover() {{
-    gd.on("plotly_hover", function (ev) {{
+    const onPt = function (ev) {{
       const pt = ev.points && ev.points[0];
       if (!pt || !lastC) return;
       const bi = lastC.labels.indexOf(pt.x);
       if (bi >= 0 && lastC.ncon[bi] > 0) showNames(bi);
-    }});
+    }};
+    gd.on("plotly_hover", onPt);
+    gd.on("plotly_click", onPt);   // 모바일: 탭
   }}
 
   function segWire(id, fn) {{

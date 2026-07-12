@@ -670,14 +670,16 @@
       + '<div class="nb-names">' + (names.join(", ") || "없음") + '</div>';
   }
   function wireHover() {
-    gd.on("plotly_hover", function (ev) {
+    const onPt = function (ev) {
       const pt = ev.points && ev.points[0];
       if (!pt || !lastC) return;
       const nm = (pt.data && pt.data.name) || "";
       if (nm !== "유입" && nm !== "이탈") return;
       const bi = lastC.labels.indexOf(pt.x);
       if (bi >= 0) showNames(nm, bi);
-    });
+    };
+    gd.on("plotly_hover", onPt);
+    gd.on("plotly_click", onPt);   // 모바일: 탭
   }
 
   function segWire(id, fn) {
