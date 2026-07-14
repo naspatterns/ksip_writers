@@ -31,6 +31,8 @@
   .banner .kicker { color:var(--gold-soft); font-weight:700; letter-spacing:.14em; font-size:.75rem; }
   .banner h1 { font-family:'Noto Serif KR',serif; font-size:clamp(1.15rem,2.6vw,1.6rem);
                line-height:1.4; margin:.2em 0 .1em; color:var(--paper); }
+  .banner h1 a { color:inherit; text-decoration:none; }
+  .banner h1 a:hover { color:var(--gold-soft); }
   .banner .subtitle { color:rgba(250,249,245,.68); font-size:.88rem; }
   .banner .en { margin-top:12px; font-family:'Noto Serif KR',serif; font-weight:600;
                 font-size:.64rem; letter-spacing:.34em; color:rgba(250,249,245,.55); }
@@ -78,6 +80,19 @@
   }
   .pending { color:var(--muted); padding:48px 0; text-align:center; }
 
+  /* 우측 고정 dock (넓은 화면 전용): 모바일 QR + 맨 위로 — 콘텐츠(nav 172+main 1000)와
+     겹치지 않는 폭에서만 표시 */
+  .dock { position:fixed; right:22px; bottom:28px; z-index:60; display:none;
+          width:124px; text-align:center; background:#fff; border:1px solid var(--grid);
+          border-radius:12px; padding:12px 10px 10px; }
+  .dock-qr { width:92px; height:92px; display:block; margin:0 auto; }
+  .dock-cap { color:var(--muted); font-size:.72rem; margin:5px 0 9px; }
+  .dock-top { display:block; width:100%; border:1px solid var(--grid); border-radius:8px;
+              background:#fff; padding:6px 0; font:inherit; font-size:.8rem;
+              color:var(--muted); cursor:pointer; }
+  .dock-top:hover { color:var(--ink); border-color:var(--gold); }
+  @media (min-width:1360px) { .dock { display:block; } }
+
   /* 풋터 — 뒤표지: 자료 출처가 다크 위에서 도드라짐 */
   footer { background:var(--ink-deep); padding:26px 32px 46px;
            color:rgba(250,249,245,.7); font-size:.82rem; }
@@ -105,6 +120,7 @@
     .banner .subtitle { color:var(--muted); }
     .banner-band { display:none; }
     footer a { color:var(--ink); }
+    .dock { display:none !important; }
   }
 </style>
 </head>
@@ -113,7 +129,7 @@
     <div class="banner-band" aria-hidden="true"></div>
     <div class="banner-text">
       <div class="kicker">데이터로 읽는 학술지</div>
-      <h1>&lt;인도철학&gt;은 왜 점점 얇아지고 있는가?</h1>
+      <h1><a href="index.html">&lt;인도철학&gt;은 왜 점점 얇아지고 있는가?</a></h1>
       <div class="subtitle">핵심 필진, 인도철학과, 그리고 헌신성으로 본 &lt;인도철학&gt; 필진 구성의 추이</div>
       <div class="en">A DATA COMPANION TO THE KOREAN JOURNAL OF INDIAN PHILOSOPHY</div>
     </div>
@@ -320,6 +336,13 @@
   <footer>자료: KCI(한국학술지인용색인) · 동국대학교 dCollection —
     원본 데이터와 수집·가공 과정은 <a target="_blank" rel="noopener" href="https://github.com/naspatterns/ksip_writers/blob/main/data/README.md">data/README.md</a> 참조 ·
     방문 통계: <a target="_blank" rel="noopener" href="https://www.goatcounter.com">GoatCounter</a>(쿠키 없음 · 개인 식별 정보 미수집)</footer>
+  <aside class="dock" aria-label="바로가기">
+    <img class="dock-qr" src="qr.png" alt="모바일에서 열기 — 대시보드 QR 코드" width="92" height="92">
+    <div class="dock-cap">모바일로 보기</div>
+    <button class="dock-top" id="dock-top">↑ 맨 위로</button>
+  </aside>
+  <script>document.getElementById("dock-top").addEventListener("click",
+    function () { window.scrollTo({ top: 0, behavior: "smooth" }); });</script>
 
 <script>
 (function () {
