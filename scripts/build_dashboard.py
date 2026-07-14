@@ -36,6 +36,9 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
 REPO = "https://github.com/naspatterns/ksip_writers"
+# 방문 통계(GoatCounter): 쿠키 없음·IP 미저장, localhost는 count.js가 기본 필터.
+# 열람: https://ksip-writers.goatcounter.com (비공개) · 롤백 = 아래 스니펫·풋터 고지 제거.
+GC = "https://ksip-writers.goatcounter.com/count"
 
 # 논문 표지 팔레트
 INK = "#1C1B19"
@@ -297,6 +300,7 @@ def page(slug: str, title: str, content: str, *, plotly: bool = False) -> str:
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdn.plot.ly">
+<link rel="dns-prefetch" href="//gc.zgo.at">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet">
 {plotly_tag}
 <style>{CSS}</style>
@@ -320,8 +324,10 @@ def page(slug: str, title: str, content: str, *, plotly: bool = False) -> str:
     </main>
   </div>
   <footer>자료: KCI(한국학술지인용색인) · 동국대학교 dCollection —
-    원본 데이터와 수집·가공 과정은 <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/README.md">data/README.md</a> 참조</footer>
+    원본 데이터와 수집·가공 과정은 <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/README.md">data/README.md</a> 참조 ·
+    방문 통계: <a target="_blank" rel="noopener" href="https://www.goatcounter.com">GoatCounter</a>(쿠키 없음 · 개인 식별 정보 미수집)</footer>
 {legend_fit}
+<script data-goatcounter="{GC}" async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>
 """
