@@ -35,6 +35,14 @@ docs/             # GitHub Pages 정적 대시보드 (Plotly HTML)
 - 해석적 설명 없음 — 범례·각주는 의미 왜곡을 막는 최소한만 (예: 휴간·잠정 구간·KCI 미커버 표시)
 - 기본값(4년 구간·3편 기준)의 모든 수치는 논문 그림 생성 스크립트의 검증값과 일치 확인됨
 
+**필자 이름 표시** — 6개 차트(유입·이탈, 출신별 비중 추이, 출신별 유입·이탈, 데뷔 코호트,
+KCI 활동 핵심, 평균 헌신도)는 꼭지점·막대 조각을 누르면 **그 수치에 집계된 필자 명단**을
+그래프 아래 영역에 나열한다(그래프를 가리지 않도록 팝업 대신 고정 영역). 저장 이미지에는
+포함되지 않는다.
+
+**모바일** — 반응형(≤760px 상단 탭 전환), 차트 위 스와이프 스크롤, 탭으로 이름 표시,
+회전 대응, 좁은 화면 눈금 자동 회전. 넓은 화면(≥1360px)에서는 우측에 모바일 QR·맨 위로 dock.
+
 **방문 통계** — 대시보드는 [GoatCounter](https://www.goatcounter.com)로 페이지뷰를 집계한다
 (쿠키·localStorage 미사용, IP 미저장, 개인 식별 정보 미수집 — 페이지 풋터에도 고지).
 
@@ -42,8 +50,13 @@ docs/             # GitHub Pages 정적 대시보드 (Plotly HTML)
 
 ```bash
 pip install -r requirements.txt
-python3 scripts/build_dashboard.py   # data/ → docs/*.html 생성
+python3 scripts/build_dashboard.py   # data/ → docs/*.html 생성 (4페이지)
+python3 scripts/make_favicon.py      # 표지 모티프 파비콘 (svg/png/ico/apple-touch)
+python3 scripts/make_qr.py           # 대시보드 QR (사이트용 + 논문 인쇄용)
 ```
+
+`build_dashboard.py`가 CSS·차트·페이지를 모두 생성하는 단일 생성기다. 파비콘·QR은 한 번
+생성해두면 되므로 대시보드 갱신 시 재실행할 필요가 없다.
 
 배포는 GitHub Pages (main 브랜치 `/docs` 폴더). push하면 1~2분 내 자동 반영.
 
