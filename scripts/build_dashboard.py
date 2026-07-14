@@ -36,6 +36,8 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
 REPO = "https://github.com/naspatterns/ksip_writers"
+# 데이터셋 개념 DOI — 항상 최신 버전으로 연결(버전 DOI는 …530 = v1.0.0, 논문 참고자료용).
+DOI = "https://doi.org/10.5281/zenodo.21319529"
 # 방문 통계(GoatCounter): 쿠키 없음·IP 미저장, localhost는 count.js가 기본 필터.
 # 열람: https://ksip-writers.goatcounter.com (비공개) · 롤백 = 아래 스니펫·풋터 고지 제거.
 GC = "https://ksip-writers.goatcounter.com/count"
@@ -344,6 +346,7 @@ def page(slug: str, title: str, content: str, *, plotly: bool = False) -> str:
   </div>
   <footer>자료: KCI(한국학술지인용색인) · 동국대학교 dCollection —
     원본 데이터와 수집·가공 과정은 <a target="_blank" rel="noopener" href="{REPO}/blob/main/data/README.md">data/README.md</a> 참조 ·
+    데이터셋: <a target="_blank" rel="noopener" href="{DOI}">doi.org/10.5281/zenodo.21319529</a>(CC BY 4.0) ·
     방문 통계: <a target="_blank" rel="noopener" href="https://www.goatcounter.com">GoatCounter</a>(쿠키 없음 · 개인 식별 정보 미수집)</footer>
   <aside class="dock" aria-label="바로가기">
     <img class="dock-qr" src="qr.png" alt="모바일에서 열기 — 대시보드 QR 코드" width="92" height="92">
