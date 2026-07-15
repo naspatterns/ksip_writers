@@ -48,7 +48,7 @@
 
 - **행수**: 1,230편 / 저자 79명
 - **출처**: KCI OpenAPI로 핵심 필진 각각의 KCI 등재(후보)지 게재 논문을 수집. 동명이인은 저자명에 접미사로 구분 (예: `김성철_유식`, `김성철_중관`, `김미숙_자이나`). 수집 스크립트: `ksip_transition/src/transition/kci_collect_sadan.py`
-- **원본 위치**: `ksip_transition/data/kci/collect/*.csv` (저자별 79개 파일) → `scripts/merge_core_authors.py`로 병합
+- **원본 위치**: `ksip_transition/data/kci/collect/*.csv` (저자별 79개 파일) → `scripts/merge_author_publications.py`로 병합
 - **컬럼** (9개): `author`(핵심 필진 이름, 병합 시 파일명에서 추가), `artiId`, `pub_year`, `journal`(게재 학술지), `categories`, `title`, `n_authors`(공저자 수), `authors`, `affil`(소속)
 
 ### 5. `core_authors_summary.csv` — 핵심 필진 요약표
@@ -56,7 +56,7 @@
 - **행수**: 79명
 - **출처**: 4번 데이터의 저자별 집계. 생성 스크립트: `ksip_transition/src/transition/kci_collect_sadan.py`
 - **원본 위치**: `ksip_transition/data/kci/collection_summary.csv`
-- **컬럼** (8개): `person_id`, `base_name`, `사단`(소속 학맥 그룹), `n_total`(KCI 전체 논문 수), `n_indo`(<인도철학> 게재 수), `n_anchors`(동정 확정 근거 논문 수), `인도철학_집중도`(n_indo/n_total), `top_journals`(주요 게재지)
+- **컬럼** (8개): `person_id`, `base_name`, `사단`(출신 그룹 구분), `n_total`(KCI 전체 논문 수), `n_indo`(<인도철학> 게재 수), `n_anchors`(동정 확정 근거 논문 수), `인도철학_집중도`(n_indo/n_total), `top_journals`(주요 게재지)
 
 ### 6. `non_core_authors_kci_publications.csv` — 비인철 학자의 KCI 등재(후보)지 출판 논문 전체
 

@@ -18,6 +18,7 @@ data/
 └── README.md     # 데이터 사전: 파일별 출처·컬럼·행수
 scripts/          # 데이터 가공 및 대시보드 차트 생성 스크립트
 docs/             # GitHub Pages 정적 대시보드 (Plotly HTML)
+graph/            # 논문 삽입 그림(PNG·SVG) 및 대시보드 QR 사본
 ```
 
 ## 대시보드
